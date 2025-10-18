@@ -143,12 +143,18 @@ export const BotConfiguration: React.FC = () => {
     if (editingBotId) {
       // Update existing bot
       updateBotFromForm(editingBotId, formattedData);
-      toast.success(`Bot updated for ${formattedData.ticker}`);
+      const toastId = toast.success(`Bot updated for ${formattedData.ticker}`, {
+        onClick: () => toast.dismiss(toastId),
+        style: { cursor: 'pointer' },
+      });
       addLog('INFO', `Bot updated successfully for ${formattedData.ticker}`);
     } else {
       // Create new bot
       addBot(formattedData);
-      toast.success(`Bot created for ${formattedData.ticker}`);
+      const toastId = toast.success(`Bot created for ${formattedData.ticker}`, {
+        onClick: () => toast.dismiss(toastId),
+        style: { cursor: 'pointer' },
+      });
       addLog('SUCCESS', `Bot configured successfully for ${formattedData.ticker}`);
     }
 

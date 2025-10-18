@@ -33,7 +33,10 @@ export const ActiveBots: React.FC = () => {
   const handleDeleteBot = (botId: string) => {
     if (deletingBot === botId) {
       removeBot(botId);
-      toast.success('Bot deleted');
+      const toastId = toast.success('Bot deleted', {
+        onClick: () => toast.dismiss(toastId),
+        style: { cursor: 'pointer' },
+      });
       setDeletingBot(null);
     } else {
       setDeletingBot(botId);
@@ -44,7 +47,10 @@ export const ActiveBots: React.FC = () => {
   const handleStopAll = () => {
     if (window.confirm('Are you sure you want to stop all bots?')) {
       stopAllBots();
-      toast.error('All bots stopped');
+      const toastId = toast.error('All bots stopped', {
+        onClick: () => toast.dismiss(toastId),
+        style: { cursor: 'pointer' },
+      });
     }
   };
 
@@ -53,7 +59,10 @@ export const ActiveBots: React.FC = () => {
     const bot = bots.find((b) => b.id === botId);
     if (bot) {
       const newStatus = bot.status === 'ACTIVE' ? 'stopped' : 'started';
-      toast.success(`Bot ${newStatus}`);
+      const toastId = toast.success(`Bot ${newStatus}`, {
+        onClick: () => toast.dismiss(toastId),
+        style: { cursor: 'pointer' },
+      });
     }
   };
 

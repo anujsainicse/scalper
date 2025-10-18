@@ -60,13 +60,19 @@ export const ActivityLog: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Logs exported to CSV');
+    const toastId = toast.success('Logs exported to CSV', {
+      onClick: () => toast.dismiss(toastId),
+      style: { cursor: 'pointer' },
+    });
   };
 
   const handleClear = () => {
     if (window.confirm('Are you sure you want to clear all logs?')) {
       clearLogs();
-      toast.success('All logs cleared');
+      const toastId = toast.success('All logs cleared', {
+        onClick: () => toast.dismiss(toastId),
+        style: { cursor: 'pointer' },
+      });
     }
   };
 

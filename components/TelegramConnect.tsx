@@ -18,11 +18,15 @@ export function TelegramConnect() {
 
   const handleToggle = () => {
     toggleTelegram();
-    toast.success(
+    const toastId = toast.success(
       telegramConnected ? 'Telegram disconnected' : 'Telegram connected',
       {
         icon: telegramConnected ? '🔴' : '🟢',
         duration: 2000,
+        onClick: () => toast.dismiss(toastId),
+        style: {
+          cursor: 'pointer',
+        },
       }
     );
   };
