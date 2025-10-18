@@ -16,7 +16,6 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
-  Radio,
   Edit,
 } from 'lucide-react';
 
@@ -25,8 +24,6 @@ export const ActiveBots: React.FC = () => {
   const toggleBot = useBotStore((state) => state.toggleBot);
   const removeBot = useBotStore((state) => state.removeBot);
   const stopAllBots = useBotStore((state) => state.stopAllBots);
-  const telegramConnected = useBotStore((state) => state.telegramConnected);
-  const toggleTelegram = useBotStore((state) => state.toggleTelegram);
   const setEditingBot = useBotStore((state) => state.setEditingBot);
 
   const [deletingBot, setDeletingBot] = useState<string | null>(null);
@@ -64,25 +61,7 @@ export const ActiveBots: React.FC = () => {
     <Card className="h-full flex flex-col">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle>Active Bots ({activeBots.length})</CardTitle>
-            <button
-              onClick={() => {
-                toggleTelegram();
-                toast.success(
-                  telegramConnected ? 'Telegram disconnected' : 'Telegram connected'
-                );
-              }}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Radio
-                className={`h-4 w-4 ${
-                  telegramConnected ? 'text-green-500' : 'text-destructive'
-                }`}
-              />
-              <span>Telegram</span>
-            </button>
-          </div>
+          <CardTitle>Active Bots ({activeBots.length})</CardTitle>
           {activeBots.length > 0 && (
             <Button variant="destructive" size="sm" onClick={handleStopAll}>
               <AlertTriangle className="mr-2 h-4 w-4" />
