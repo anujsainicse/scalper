@@ -30,39 +30,44 @@ export const ActiveBots: React.FC = () => {
 
   const activeBots = bots.filter((bot) => bot.status === 'ACTIVE');
 
-  const handleDeleteBot = (botId: string) => {
+  const handleDeleteBot = async (botId: string) => {
     if (deletingBot === botId) {
-      removeBot(botId);
-      const toastId = toast.success('Bot deleted', {
-        onClick: () => toast.dismiss(toastId),
-        style: { cursor: 'pointer' },
-      });
-      setDeletingBot(null);
+      try {
+        await removeBot(botId);
+        toast.success('✅ Bot deleted');
+        setDeletingBot(null);
+      } catch (error) {
+        toast.error('❌ Failed to delete bot');
+      }
     } else {
       setDeletingBot(botId);
       setTimeout(() => setDeletingBot(null), 3000);
     }
   };
 
-  const handleStopAll = () => {
+  const handleStopAll = async () => {
     if (window.confirm('Are you sure you want to stop all bots?')) {
-      stopAllBots();
-      const toastId = toast.error('All bots stopped', {
-        onClick: () => toast.dismiss(toastId),
-        style: { cursor: 'pointer' },
-      });
+      try {
+        await stopAllBots();
+        toast.error('🛑 All bots stopped');
+      } catch (error) {
+        toast.error('❌ Failed to stop bots');
+      }
     }
   };
 
-  const handleToggleBot = (botId: string) => {
-    toggleBot(botId);
-    const bot = bots.find((b) => b.id === botId);
-    if (bot) {
-      const newStatus = bot.status === 'ACTIVE' ? 'stopped' : 'started';
-      const toastId = toast.success(`Bot ${newStatus}`, {
-        onClick: () => toast.dismiss(toastId),
-        style: { cursor: 'pointer' },
-      });
+  const handleToggleBot = async (botId: string) => {
+    try {
+      const bot = bots.find((b) => b.id === botId);
+      const willBeActive = bot?.status !== 'ACTIVE';
+
+      await toggleBot(botId);
+
+      const status = willBeActive ? 'started' : 'stopped';
+      const icon = willBeActive ? '▶️' : '⏸️';
+      toast.success(`${icon} Bot ${status}`);
+    } catch (error) {
+      toast.error('❌ Failed to toggle bot');
     }
   };
 

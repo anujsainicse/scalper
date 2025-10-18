@@ -125,7 +125,7 @@ export const BotConfiguration: React.FC = () => {
     return errors.length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -140,38 +140,36 @@ export const BotConfiguration: React.FC = () => {
       trailingPercent: formData.trailingPercent ? Number(formData.trailingPercent) : undefined,
     };
 
-    if (editingBotId) {
-      // Update existing bot
-      updateBotFromForm(editingBotId, formattedData);
-      const toastId = toast.success(`Bot updated for ${formattedData.ticker}`, {
-        onClick: () => toast.dismiss(toastId),
-        style: { cursor: 'pointer' },
-      });
-      addLog('INFO', `Bot updated successfully for ${formattedData.ticker}`);
-    } else {
-      // Create new bot
-      addBot(formattedData);
-      const toastId = toast.success(`Bot created for ${formattedData.ticker}`, {
-        onClick: () => toast.dismiss(toastId),
-        style: { cursor: 'pointer' },
-      });
-      addLog('SUCCESS', `Bot configured successfully for ${formattedData.ticker}`);
-    }
+    try {
+      if (editingBotId) {
+        // Update existing bot
+        await updateBotFromForm(editingBotId, formattedData);
+        toast.success(`✅ Bot updated for ${formattedData.ticker}`);
+      } else {
+        // Create new bot
+        await addBot(formattedData);
+        toast.success(`✅ Bot created for ${formattedData.ticker}`);
+      }
 
-    // Reset form
-    setFormData({
-      ticker: '',
-      exchange: 'CoinDCX F',
-      firstOrder: 'BUY',
-      quantity: 1,
-      customQuantity: undefined,
-      buyPrice: 0,
-      sellPrice: 0,
-      trailingPercent: undefined,
-      infiniteLoop: false,
-    });
-    setShowCustomQuantity(false);
-    setEditingBot(null);
+      // Reset form
+      setFormData({
+        ticker: '',
+        exchange: 'CoinDCX F',
+        firstOrder: 'BUY',
+        quantity: 1,
+        customQuantity: undefined,
+        buyPrice: 0,
+        sellPrice: 0,
+        trailingPercent: undefined,
+        infiniteLoop: false,
+      });
+      setShowCustomQuantity(false);
+      setEditingBot(null);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save bot';
+      toast.error(`❌ ${errorMessage}`);
+      addLog('ERROR', errorMessage);
+    }
   };
 
   return (

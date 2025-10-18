@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { BotConfig, ActiveBot, ActivityLog, BotFormData, LogLevel } from '@/types/bot';
 import { generateId } from '@/utils/formatters';
+import { api, Bot as ApiBot, ActivityLog as ApiLog } from '@/lib/api';
 
 interface BotStore {
   // State
@@ -8,82 +9,142 @@ interface BotStore {
   activityLogs: ActivityLog[];
   telegramConnected: boolean;
   editingBotId: string | null;
+  isLoading: boolean;
+  error: string | null;
 
   // Bot actions
-  addBot: (formData: BotFormData) => void;
-  removeBot: (botId: string) => void;
+  fetchBots: () => Promise<void>;
+  addBot: (formData: BotFormData) => Promise<void>;
+  removeBot: (botId: string) => Promise<void>;
   updateBot: (botId: string, updates: Partial<ActiveBot>) => void;
-  updateBotFromForm: (botId: string, formData: BotFormData) => void;
-  toggleBot: (botId: string) => void;
-  stopAllBots: () => void;
+  updateBotFromForm: (botId: string, formData: BotFormData) => Promise<void>;
+  toggleBot: (botId: string) => Promise<void>;
+  stopAllBots: () => Promise<void>;
   setEditingBot: (botId: string | null) => void;
 
   // Log actions
+  fetchLogs: () => Promise<void>;
   addLog: (level: LogLevel, message: string, botId?: string) => void;
-  clearLogs: () => void;
+  clearLogs: () => Promise<void>;
 
   // Telegram action
   toggleTelegram: () => void;
 }
 
-export const useBotStore = create<BotStore>((set) => ({
+// Helper to convert API bot to ActiveBot
+const apiToActiveBot = (apiBot: ApiBot): ActiveBot => ({
+  id: apiBot.id,
+  ticker: apiBot.ticker,
+  exchange: apiBot.exchange as 'CoinDCX F' | 'Binance',
+  firstOrder: apiBot.first_order as 'BUY' | 'SELL',
+  quantity: apiBot.quantity,
+  buyPrice: apiBot.buy_price,
+  sellPrice: apiBot.sell_price,
+  trailingPercent: apiBot.trailing_percent || undefined,
+  infiniteLoop: apiBot.infinite_loop,
+  status: apiBot.status,
+  createdAt: new Date(apiBot.created_at),
+  updatedAt: new Date(apiBot.updated_at),
+  pnl: apiBot.pnl,
+  totalTrades: apiBot.total_trades,
+});
+
+// Helper to convert API log to ActivityLog
+const apiToActivityLog = (apiLog: ApiLog): ActivityLog => ({
+  id: apiLog.id,
+  timestamp: new Date(apiLog.timestamp),
+  level: apiLog.level as LogLevel,
+  message: apiLog.message,
+  botId: apiLog.bot_id || undefined,
+});
+
+export const useBotStore = create<BotStore>((set, get) => ({
   // Initial state
   bots: [],
   activityLogs: [],
   telegramConnected: false,
   editingBotId: null,
+  isLoading: false,
+  error: null,
 
-  // Bot actions
-  addBot: (formData: BotFormData) => {
-    const newBot: ActiveBot = {
-      id: generateId(),
-      ticker: formData.ticker,
-      exchange: formData.exchange,
-      firstOrder: formData.firstOrder,
-      quantity: formData.customQuantity || formData.quantity,
-      buyPrice: formData.buyPrice,
-      sellPrice: formData.sellPrice,
-      trailingPercent: formData.trailingPercent,
-      infiniteLoop: formData.infiniteLoop,
-      status: 'ACTIVE',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      pnl: 0,
-      totalTrades: 0,
-    };
-
-    set((state) => ({
-      bots: [...state.bots, newBot],
-      activityLogs: [
-        {
-          id: generateId(),
-          timestamp: new Date(),
-          level: 'SUCCESS',
-          message: `Bot started for ${newBot.ticker} on ${newBot.exchange}`,
-          botId: newBot.id,
-        },
-        ...state.activityLogs,
-      ],
-    }));
+  // Fetch bots from API
+  fetchBots: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const apiBots = await api.getBots();
+      const bots = apiBots.map(apiToActiveBot);
+      set({ bots, isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to fetch bots',
+        isLoading: false
+      });
+    }
   },
 
-  removeBot: (botId: string) => {
-    set((state) => {
-      const bot = state.bots.find((b) => b.id === botId);
-      return {
+  // Fetch activity logs from API
+  fetchLogs: async () => {
+    try {
+      const apiLogs = await api.getLogs({ limit: 1000 });
+      const activityLogs = apiLogs.map(apiToActivityLog);
+      set({ activityLogs });
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+    }
+  },
+
+  // Bot actions
+  addBot: async (formData: BotFormData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const apiBot = await api.createBot({
+        ticker: formData.ticker,
+        exchange: formData.exchange,
+        first_order: formData.firstOrder,
+        quantity: formData.customQuantity || formData.quantity,
+        buy_price: formData.buyPrice,
+        sell_price: formData.sellPrice,
+        trailing_percent: formData.trailingPercent || null,
+        infinite_loop: formData.infiniteLoop,
+      });
+
+      const newBot = apiToActiveBot(apiBot);
+
+      set((state) => ({
+        bots: [...state.bots, newBot],
+        isLoading: false,
+      }));
+
+      // Refresh logs to get the new bot creation log
+      await get().fetchLogs();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to create bot',
+        isLoading: false
+      });
+      throw error;
+    }
+  },
+
+  removeBot: async (botId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.deleteBot(botId);
+
+      set((state) => ({
         bots: state.bots.filter((b) => b.id !== botId),
-        activityLogs: [
-          {
-            id: generateId(),
-            timestamp: new Date(),
-            level: 'WARNING',
-            message: `Bot deleted for ${bot?.ticker}`,
-            botId,
-          },
-          ...state.activityLogs,
-        ],
-      };
-    });
+        isLoading: false,
+      }));
+
+      // Refresh logs
+      await get().fetchLogs();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete bot',
+        isLoading: false
+      });
+      throw error;
+    }
   },
 
   updateBot: (botId: string, updates: Partial<ActiveBot>) => {
@@ -96,39 +157,37 @@ export const useBotStore = create<BotStore>((set) => ({
     }));
   },
 
-  updateBotFromForm: (botId: string, formData: BotFormData) => {
-    set((state) => {
-      const bot = state.bots.find((b) => b.id === botId);
-      return {
-        bots: state.bots.map((b) =>
-          b.id === botId
-            ? {
-                ...b,
-                ticker: formData.ticker,
-                exchange: formData.exchange,
-                firstOrder: formData.firstOrder,
-                quantity: formData.customQuantity || formData.quantity,
-                buyPrice: formData.buyPrice,
-                sellPrice: formData.sellPrice,
-                trailingPercent: formData.trailingPercent,
-                infiniteLoop: formData.infiniteLoop,
-                updatedAt: new Date(),
-              }
-            : b
-        ),
+  updateBotFromForm: async (botId: string, formData: BotFormData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const apiBot = await api.updateBot(botId, {
+        ticker: formData.ticker,
+        exchange: formData.exchange,
+        first_order: formData.firstOrder,
+        quantity: formData.customQuantity || formData.quantity,
+        buy_price: formData.buyPrice,
+        sell_price: formData.sellPrice,
+        trailing_percent: formData.trailingPercent || null,
+        infinite_loop: formData.infiniteLoop,
+      });
+
+      const updatedBot = apiToActiveBot(apiBot);
+
+      set((state) => ({
+        bots: state.bots.map((b) => b.id === botId ? updatedBot : b),
         editingBotId: null,
-        activityLogs: [
-          {
-            id: generateId(),
-            timestamp: new Date(),
-            level: 'INFO',
-            message: `Bot updated for ${formData.ticker} on ${formData.exchange}`,
-            botId,
-          },
-          ...state.activityLogs,
-        ],
-      };
-    });
+        isLoading: false,
+      }));
+
+      // Refresh logs
+      await get().fetchLogs();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update bot',
+        isLoading: false
+      });
+      throw error;
+    }
   },
 
   setEditingBot: (botId: string | null) => {
@@ -137,50 +196,47 @@ export const useBotStore = create<BotStore>((set) => ({
     }));
   },
 
-  toggleBot: (botId: string) => {
-    set((state) => {
-      const bot = state.bots.find((b) => b.id === botId);
-      const newStatus = bot?.status === 'ACTIVE' ? 'STOPPED' : 'ACTIVE';
-      const level = newStatus === 'ACTIVE' ? 'SUCCESS' : 'WARNING';
-      const message = `Bot ${newStatus.toLowerCase()} for ${bot?.ticker}`;
+  toggleBot: async (botId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const apiBot = await api.toggleBot(botId);
+      const updatedBot = apiToActiveBot(apiBot);
 
-      return {
-        bots: state.bots.map((b) =>
-          b.id === botId
-            ? { ...b, status: newStatus, updatedAt: new Date() }
-            : b
-        ),
-        activityLogs: [
-          {
-            id: generateId(),
-            timestamp: new Date(),
-            level,
-            message,
-            botId,
-          },
-          ...state.activityLogs,
-        ],
-      };
-    });
+      set((state) => ({
+        bots: state.bots.map((b) => b.id === botId ? updatedBot : b),
+        isLoading: false,
+      }));
+
+      // Refresh logs
+      await get().fetchLogs();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to toggle bot',
+        isLoading: false
+      });
+      throw error;
+    }
   },
 
-  stopAllBots: () => {
-    set((state) => ({
-      bots: state.bots.map((bot) => ({
-        ...bot,
-        status: 'STOPPED' as const,
-        updatedAt: new Date(),
-      })),
-      activityLogs: [
-        {
-          id: generateId(),
-          timestamp: new Date(),
-          level: 'ERROR',
-          message: 'Emergency stop - All bots stopped',
-        },
-        ...state.activityLogs,
-      ],
-    }));
+  stopAllBots: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.stopAllBots();
+
+      // Fetch updated bots
+      await get().fetchBots();
+
+      // Refresh logs
+      await get().fetchLogs();
+
+      set({ isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to stop all bots',
+        isLoading: false
+      });
+      throw error;
+    }
   },
 
   // Log actions
@@ -199,10 +255,15 @@ export const useBotStore = create<BotStore>((set) => ({
     }));
   },
 
-  clearLogs: () => {
-    set(() => ({
-      activityLogs: [],
-    }));
+  clearLogs: async () => {
+    try {
+      await api.clearLogs();
+      set(() => ({
+        activityLogs: [],
+      }));
+    } catch (error) {
+      console.error('Failed to clear logs:', error);
+    }
   },
 
   // Telegram action

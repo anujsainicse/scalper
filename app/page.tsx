@@ -3,10 +3,12 @@ import { ActiveBots } from '@/components/ActiveBots';
 import { ActivityLog } from '@/components/ActivityLog';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TelegramConnect } from '@/components/TelegramConnect';
+import { DataLoader } from '@/components/DataLoader';
 
 export default function Home() {
   return (
-    <div className="min-h-screen p-4 md:p-6">
+    <DataLoader>
+      <div className="min-h-screen p-4 md:p-6">
       {/* Header */}
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -41,5 +43,6 @@ export default function Home() {
         <ActivityLog />
       </div>
     </div>
+    </DataLoader>
   );
 }

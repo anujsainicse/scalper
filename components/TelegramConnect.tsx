@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import toast from 'react-hot-toast';
 import { Radio } from 'lucide-react';
 import { useBotStore } from '@/store/botStore';
 import { Button } from '@/components/ui/button';
-import toast from 'react-hot-toast';
 
 export function TelegramConnect() {
   const telegramConnected = useBotStore((state) => state.telegramConnected);
@@ -18,15 +18,10 @@ export function TelegramConnect() {
 
   const handleToggle = () => {
     toggleTelegram();
-    const toastId = toast.success(
-      telegramConnected ? 'Telegram disconnected' : 'Telegram connected',
+    toast.success(
+      `${telegramConnected ? '🔴' : '🟢'} ${telegramConnected ? 'Telegram disconnected' : 'Telegram connected'}`,
       {
-        icon: telegramConnected ? '🔴' : '🟢',
         duration: 2000,
-        onClick: () => toast.dismiss(toastId),
-        style: {
-          cursor: 'pointer',
-        },
       }
     );
   };
