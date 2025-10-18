@@ -15,6 +15,7 @@ from app.schemas.bot import (
     ActivityLogResponse,
     ActivityLogCreate
 )
+from app.services.telegram import telegram_service
 
 router = APIRouter()
 
@@ -76,6 +77,18 @@ async def create_bot(
 
     await db.commit()
     await db.refresh(bot)
+
+    # Send Telegram notification
+    await telegram_service.send_notification(
+        db=db,
+        message=f"*Bot Created*\n\n"
+                f"Ticker: {bot.ticker}\n"
+                f"Exchange: {bot.exchange.value}\n"
+                f"Quantity: {bot.quantity}\n"
+                f"Buy Price: ${bot.buy_price}\n"
+                f"Sell Price: ${bot.sell_price}",
+        level="SUCCESS"
+    )
 
     return bot
 
@@ -145,6 +158,10 @@ async def delete_bot(
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
 
+    # Store bot info before deleting
+    ticker = bot.ticker
+    exchange = bot.exchange.value
+
     # Create activity log before deleting
     log = ActivityLog(
         bot_id=bot.id,
@@ -155,6 +172,15 @@ async def delete_bot(
 
     await db.delete(bot)
     await db.commit()
+
+    # Send Telegram notification
+    await telegram_service.send_notification(
+        db=db,
+        message=f"*Bot Deleted*\n\n"
+                f"Ticker: {ticker}\n"
+                f"Exchange: {exchange}",
+        level="WARNING"
+    )
 
     return None
 
@@ -185,6 +211,16 @@ async def start_bot(
     await db.commit()
     await db.refresh(bot)
 
+    # Send Telegram notification
+    await telegram_service.send_notification(
+        db=db,
+        message=f"*Bot Started*\n\n"
+                f"Ticker: {bot.ticker}\n"
+                f"Exchange: {bot.exchange.value}\n"
+                f"Status: ACTIVE",
+        level="SUCCESS"
+    )
+
     return bot
 
 
@@ -213,6 +249,16 @@ async def stop_bot(
 
     await db.commit()
     await db.refresh(bot)
+
+    # Send Telegram notification
+    await telegram_service.send_notification(
+        db=db,
+        message=f"*Bot Stopped*\n\n"
+                f"Ticker: {bot.ticker}\n"
+                f"Exchange: {bot.exchange.value}\n"
+                f"Status: STOPPED",
+        level="WARNING"
+    )
 
     return bot
 
@@ -270,6 +316,15 @@ async def stop_all_bots(
     db.add(log)
 
     await db.commit()
+
+    # Send Telegram notification
+    await telegram_service.send_notification(
+        db=db,
+        message=f"*Emergency Stop*\n\n"
+                f"All bots have been stopped!\n"
+                f"Total bots stopped: {len(bots)}",
+        level="ERROR"
+    )
 
     return {"message": f"Stopped {len(bots)} bots", "count": len(bots)}
 

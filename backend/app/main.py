@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.router import api_router
 from app.db.session import engine, Base
+from app.services.telegram import telegram_service
+import asyncio
 
 
 @asynccontextmanager
@@ -21,6 +23,17 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     print("✅ Database tables created")
+
+    # Initialize Telegram bot
+    if settings.TELEGRAM_BOT_TOKEN:
+        try:
+            asyncio.create_task(telegram_service.start_polling())
+            print("✅ Telegram bot initialized and polling started")
+        except Exception as e:
+            print(f"⚠️  Failed to start Telegram bot: {e}")
+    else:
+        print("⚠️  Telegram bot token not configured - skipping Telegram features")
+
     print(f"📍 API running at http://{settings.HOST}:{settings.PORT}")
     print(f"📚 Docs available at http://{settings.HOST}:{settings.PORT}/docs")
 
@@ -28,6 +41,12 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print("🛑 Shutting down Scalper Bot API...")
+
+    # Stop Telegram bot
+    if telegram_service.application:
+        print("Stopping Telegram bot...")
+        await telegram_service.stop()
+
     await engine.dispose()
 
 

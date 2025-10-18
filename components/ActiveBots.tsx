@@ -19,6 +19,8 @@ import {
   Edit,
 } from 'lucide-react';
 
+type BotFilter = 'all' | 'active' | 'stopped';
+
 export const ActiveBots: React.FC = () => {
   const bots = useBotStore((state) => state.bots);
   const toggleBot = useBotStore((state) => state.toggleBot);
@@ -27,8 +29,16 @@ export const ActiveBots: React.FC = () => {
   const setEditingBot = useBotStore((state) => state.setEditingBot);
 
   const [deletingBot, setDeletingBot] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<BotFilter>('all');
 
   const activeBots = bots.filter((bot) => bot.status === 'ACTIVE');
+  const stoppedBots = bots.filter((bot) => bot.status === 'STOPPED');
+
+  // Filter bots based on active tab
+  const filteredBots =
+    activeFilter === 'all' ? bots :
+    activeFilter === 'active' ? activeBots :
+    stoppedBots;
 
   const handleDeleteBot = async (botId: string) => {
     if (deletingBot === botId) {
@@ -73,11 +83,65 @@ export const ActiveBots: React.FC = () => {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle>Active Bots ({activeBots.length})</CardTitle>
+          {/* Tabs */}
+          <div className="flex gap-2 border-b flex-1">
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                activeFilter === 'all'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All Bots
+              <Badge variant="secondary" className="ml-2">
+                {bots.length}
+              </Badge>
+              {activeFilter === 'all' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveFilter('active')}
+              className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                activeFilter === 'active'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Active Bots
+              <Badge variant="secondary" className="ml-2 bg-green-600/20 text-green-400">
+                {activeBots.length}
+              </Badge>
+              {activeFilter === 'active' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveFilter('stopped')}
+              className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                activeFilter === 'stopped'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Stopped Bots
+              <Badge variant="secondary" className="ml-2">
+                {stoppedBots.length}
+              </Badge>
+              {activeFilter === 'stopped' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+              )}
+            </button>
+          </div>
+
+          {/* Stop All Button */}
           {activeBots.length > 0 && (
-            <Button variant="destructive" size="sm" onClick={handleStopAll}>
+            <Button variant="destructive" size="sm" onClick={handleStopAll} className="ml-4">
               <AlertTriangle className="mr-2 h-4 w-4" />
               Stop All
             </Button>
@@ -86,15 +150,30 @@ export const ActiveBots: React.FC = () => {
       </CardHeader>
 
       <CardContent className="flex-1 overflow-y-auto">
-        {bots.length === 0 ? (
+        {filteredBots.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <Activity className="h-16 w-16 mb-4 opacity-50" />
-            <p className="text-lg">No bots configured yet</p>
-            <p className="text-sm mt-2">Create a bot to get started</p>
+            {bots.length === 0 ? (
+              <>
+                <p className="text-lg">No bots configured yet</p>
+                <p className="text-sm mt-2">Create a bot to get started</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg">
+                  No {activeFilter === 'active' ? 'active' : 'stopped'} bots
+                </p>
+                <p className="text-sm mt-2">
+                  {activeFilter === 'active'
+                    ? 'Start a bot to see it here'
+                    : 'Stop a bot to see it here'}
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {bots.map((bot) => (
+            {filteredBots.map((bot) => (
               <BotCard
                 key={bot.id}
                 bot={bot}

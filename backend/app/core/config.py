@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     MAX_BOTS_PER_USER: int = 10
     DEFAULT_BOT_STATUS: str = "STOPPED"
 
+    # Telegram Settings
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_WEBHOOK_URL: Optional[str] = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True

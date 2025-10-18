@@ -5,6 +5,61 @@ All notable changes to the Scalper Bot Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-10-18
+
+### Added
+
+#### UI/UX Improvements
+- **Three-Tab Filtering System**: Enhanced ActiveBots component with intelligent filtering
+  - "All Bots" tab showing complete bot list with count badge
+  - "Active Bots" tab showing only running bots with green badge
+  - "Stopped Bots" tab showing only stopped bots
+  - Visual active indicator (bottom border) for selected tab
+  - Real-time count badges that update as bots change status
+  - Contextual empty states for each filter type
+  - Smooth transitions between tabs
+
+- **Improved Header Layout**: Optimized ActiveBots header structure
+  - Removed redundant title heading
+  - Moved tabs to primary position in header
+  - Tabs on left, "Stop All" button on right
+  - Better space utilization and cleaner UI
+  - Flex layout for responsive design
+
+- **Default Ticker Selection**: Enhanced user experience in BotConfiguration
+  - First ticker (ETH/USDT) now pre-selected by default
+  - Eliminates extra click for most common use case
+  - Faster bot creation workflow
+  - Applied to initial load, form reset, and cancel actions
+
+- **AI Development Guide**: Comprehensive `.claude/CLAUDE.md` documentation
+  - Complete project overview and critical guidelines
+  - Technology stack documentation (frontend + backend)
+  - Detailed project structure with file descriptions
+  - Architecture patterns and code examples
+  - Component, form, endpoint, and database patterns
+  - Common development tasks (adding exchanges, components, endpoints)
+  - Code style guidelines and naming conventions
+  - Testing guidelines and environment setup
+  - Troubleshooting guide with solutions
+  - Complete API endpoint reference
+  - Deployment checklist
+  - Quick command reference
+  - 400+ lines of comprehensive AI assistant guidance
+
+### Changed
+- **ActiveBots Layout**: Restructured header from title-based to tab-based navigation
+- **Bot Form UX**: Changed ticker dropdown from placeholder to pre-selected first option
+- **Empty States**: Enhanced with context-aware messaging based on active filter
+
+### Technical Details
+- Tab state managed with local `useState<BotFilter>('all')`
+- Filtering logic uses array `.filter()` with bot status checks
+- Three filtered arrays: `bots`, `activeBots`, `stoppedBots`
+- Badge counts update automatically via Zustand store reactivity
+
+---
+
 ## [0.1.0] - 2025-10-18
 
 ### Added

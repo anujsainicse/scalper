@@ -136,7 +136,46 @@ class BotStatistics(BaseModel):
     total_trades: int
 
 
-# Telegram Connection Schema
+# Telegram Connection Schemas
+class TelegramConnectionBase(BaseModel):
+    chat_id: str
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+
+class TelegramConnectionCreate(TelegramConnectionBase):
+    connection_code: str = Field(..., min_length=6, max_length=6)
+
+
+class TelegramConnectionResponse(TelegramConnectionBase):
+    id: UUID
+    is_active: bool
+    connected_at: datetime
+    last_notification_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
 class TelegramStatus(BaseModel):
     connected: bool
-    last_updated: datetime
+    chat_id: Optional[str] = None
+    username: Optional[str] = None
+    connected_at: Optional[datetime] = None
+
+
+class TelegramConnectionCodeResponse(BaseModel):
+    connection_code: str
+    expires_at: datetime
+    message: str
+
+
+class TelegramVerifyRequest(BaseModel):
+    connection_code: str = Field(..., min_length=6, max_length=6)
+    chat_id: str
+
+
+class TelegramNotification(BaseModel):
+    message: str
+    level: Optional[LogLevel] = LogLevel.INFO

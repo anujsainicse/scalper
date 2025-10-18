@@ -102,3 +102,30 @@ class Trade(Base):
 
     def __repr__(self):
         return f"<Trade(id={self.id}, symbol={self.symbol}, side={self.side}, price={self.price})>"
+
+
+class TelegramConnection(Base):
+    __tablename__ = "telegram_connections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+
+    # Telegram Info
+    chat_id = Column(String(100), unique=True, nullable=False, index=True)
+    username = Column(String(100), nullable=True)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+
+    # Connection Info
+    is_active = Column(Boolean, default=True, index=True)
+    connection_code = Column(String(6), nullable=True, index=True)  # 6-digit code for initial connection
+    code_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    connected_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_notification_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Additional metadata
+    extra_data = Column(JSON, nullable=True)
+
+    def __repr__(self):
+        return f"<TelegramConnection(id={self.id}, chat_id={self.chat_id}, username={self.username})>"

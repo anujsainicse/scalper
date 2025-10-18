@@ -31,7 +31,7 @@ export const BotConfiguration: React.FC = () => {
   const addLog = useBotStore((state) => state.addLog);
 
   const [formData, setFormData] = useState<BotFormData>({
-    ticker: '',
+    ticker: POPULAR_TICKERS[0] || '',
     exchange: 'CoinDCX F',
     firstOrder: 'BUY',
     quantity: 1,
@@ -153,7 +153,7 @@ export const BotConfiguration: React.FC = () => {
 
       // Reset form
       setFormData({
-        ticker: '',
+        ticker: POPULAR_TICKERS[0] || '',
         exchange: 'CoinDCX F',
         firstOrder: 'BUY',
         quantity: 1,
@@ -347,7 +347,7 @@ export const BotConfiguration: React.FC = () => {
                 onClick={() => {
                   setEditingBot(null);
                   setFormData({
-                    ticker: '',
+                    ticker: POPULAR_TICKERS[0] || '',
                     exchange: 'CoinDCX F',
                     firstOrder: 'BUY',
                     quantity: 1,

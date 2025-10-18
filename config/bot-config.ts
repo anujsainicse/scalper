@@ -59,7 +59,6 @@ export const TRAILING_PERCENTAGES: ConfigItem[] = [
  * Optional: Pre-populate ticker suggestions (can be used for autocomplete)
  */
 export const POPULAR_TICKERS: string[] = [
-  'BTC/USDT',
   'ETH/USDT',
   'BNB/USDT',
   'SOL/USDT',
@@ -71,3 +70,4 @@ export const POPULAR_TICKERS: string[] = [
   'AVAX/USDT',
   // Add more tickers here
 ];
+

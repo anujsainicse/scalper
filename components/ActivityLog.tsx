@@ -16,6 +16,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TelegramConnect } from './TelegramConnect';
 
 const LOG_FILTERS: (LogLevel | 'ALL')[] = ['ALL', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'TELEGRAM'];
 
@@ -103,6 +104,7 @@ export const ActivityLog: React.FC = () => {
 
           {/* Toolbar */}
           <div className="flex gap-2">
+            <TelegramConnect />
             <Button
               variant={autoScroll ? 'default' : 'outline'}
               size="sm"
