@@ -267,6 +267,327 @@ After making changes, verify:
 
 ---
 
+---
+
+## [2025-10-19] - Exchange Integration Architecture (Phase 1 & 2)
+
+### Overview
+Implemented plugin/adapter architecture for exchange-specific order execution. This foundation enables scalable integration with multiple cryptocurrency exchanges.
+
+### Architecture Components Created
+
+#### 1. Base Exchange Adapter (`backend/app/exchanges/base.py`)
+Abstract interface defining standard methods all exchanges must implement:
+- `place_order()` - Execute buy/sell orders
+- `cancel_order()` - Cancel active orders
+- `get_order_status()` - Track order execution
+- `get_balance()` - Check account balances
+- `get_market_price()` - Fetch current prices
+- `get_ticker_info()` - Market specifications
+- `validate_credentials()` - Test API keys
+
+**Order Types**: MARKET, LIMIT, STOP_LOSS, TAKE_PROFIT, TAKE_PROFIT_LIMIT
+**Order Status**: PENDING, OPEN, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED, EXPIRED, FAILED
+
+#### 2. Exchange Factory (`backend/app/exchanges/factory.py`)
+Registry-based pattern for dynamic adapter instantiation:
+```python
+from app.exchanges import ExchangeFactory, create_exchange_adapter
+
+# Create adapter
+adapter = create_exchange_adapter(
+    exchange_name='coindcx',
+    api_key='your-api-key',
+    secret_key='your-secret',
+    testnet=True
+)
+
+# Or use factory directly
+adapter = ExchangeFactory.create('coindcx', api_key, secret_key)
+```
+
+#### 3. Encryption Utilities (`backend/app/utils/encryption.py`)
+Fernet symmetric encryption for secure API key storage:
+```python
+from app.utils import encrypt_api_key, decrypt_api_key
+
+# Encrypt before storing
+encrypted = encrypt_api_key("my-api-key")
+
+# Decrypt when needed
+decrypted = decrypt_api_key(encrypted)
+```
+
+Uses `SECRET_KEY` from settings to derive encryption key consistently.
+
+#### 4. Database Models
+
+**ExchangeCredentials** (`backend/app/models/credentials.py`):
+Stores encrypted exchange API credentials:
+- `exchange`: Exchange name (e.g., 'coindcx', 'bybit')
+- `api_key_encrypted`: Encrypted API key
+- `secret_key_encrypted`: Encrypted secret key
+- `is_testnet`: Testnet/mainnet flag
+- `is_validated`: Credential validation status
+- `extra_config`: JSON field for exchange-specific settings
+
+**Order** (`backend/app/models/order.py`):
+Complete order lifecycle tracking:
+- Order details: ticker, side, type, quantity, price
+- Status tracking through lifecycle
+- Fill tracking: filled_quantity, average_fill_price
+- Financial: commission, PnL
+- Timestamps: created, sent_to_exchange, first_fill, last_fill, completed
+- Properties: `is_complete`, `fill_percentage`
+
+#### 5. CoinDCX Adapter (`backend/app/exchanges/coindcx/adapter.py`)
+Working implementation for CoinDCX Futures:
+- HMAC-SHA256 authentication
+- All BaseExchangeAdapter methods implemented
+- Ticker formatting for futures (ETH/USDT → B-ETH_USDT)
+- Auto-registration with ExchangeFactory
+
+**Key Features**:
+- Async HTTP client (httpx)
+- Signature generation for authenticated requests
+- Status mapping to standard enums
+- Error handling and validation
+
+### Usage Examples
+
+#### Creating Exchange Adapter
+```python
+from app.exchanges import create_exchange_adapter
+from app.utils import decrypt_api_key
+
+# Get credentials from database
+creds = await get_credentials_from_db('coindcx')
+api_key = decrypt_api_key(creds.api_key_encrypted)
+secret_key = decrypt_api_key(creds.secret_key_encrypted)
+
+# Create adapter
+adapter = create_exchange_adapter(
+    'coindcx',
+    api_key,
+    secret_key,
+    testnet=creds.is_testnet
+)
+
+# Validate credentials
+if await adapter.validate_credentials():
+    print("Credentials valid!")
+```
+
+#### Placing Orders
+```python
+from decimal import Decimal
+from app.exchanges.base import OrderSide, OrderType
+
+# Place limit buy order
+result = await adapter.place_order(
+    ticker='ETH/USDT',
+    side=OrderSide.BUY,
+    quantity=Decimal('0.1'),
+    order_type=OrderType.LIMIT,
+    price=Decimal('2000.50')
+)
+
+print(f"Order ID: {result['order_id']}")
+print(f"Status: {result['status']}")
+```
+
+#### Checking Order Status
+```python
+status = await adapter.get_order_status(
+    order_id='abc123',
+    ticker='ETH/USDT'
+)
+
+print(f"Filled: {status['filled_quantity']}")
+print(f"Status: {status['status']}")
+```
+
+### File Structure
+```
+backend/app/
+├── exchanges/
+│   ├── __init__.py
+│   ├── base.py                    # BaseExchangeAdapter
+│   ├── factory.py                 # ExchangeFactory
+│   ├── coindcx/
+│   │   ├── __init__.py
+│   │   └── adapter.py             # CoinDCXAdapter
+│   └── bybit/
+│       └── __init__.py            # Placeholder
+├── models/
+│   ├── bot.py                     # Updated Exchange enum
+│   ├── credentials.py             # ExchangeCredentials model
+│   └── order.py                   # Order model
+└── utils/
+    ├── __init__.py
+    └── encryption.py              # Encryption utilities
+```
+
+### Database Schema
+
+#### exchange_credentials
+```sql
+CREATE TABLE exchange_credentials (
+    id UUID PRIMARY KEY,
+    exchange VARCHAR(50) NOT NULL,
+    exchange_display_name VARCHAR(100) NOT NULL,
+    api_key_encrypted VARCHAR(500) NOT NULL,
+    secret_key_encrypted VARCHAR(500) NOT NULL,
+    passphrase_encrypted VARCHAR(500),
+    is_testnet BOOLEAN DEFAULT TRUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    label VARCHAR(100),
+    description VARCHAR(500),
+    is_validated BOOLEAN DEFAULT FALSE,
+    last_validated_at TIMESTAMP WITH TIME ZONE,
+    validation_error VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    extra_config JSON
+);
+```
+
+#### orders
+```sql
+CREATE TABLE orders (
+    id UUID PRIMARY KEY,
+    bot_id UUID REFERENCES bots(id) NOT NULL,
+    exchange VARCHAR(50) NOT NULL,
+    exchange_order_id VARCHAR(100),
+    ticker VARCHAR(20) NOT NULL,
+    side VARCHAR(10) NOT NULL,
+    order_type VARCHAR(20) NOT NULL,
+    quantity FLOAT NOT NULL,
+    filled_quantity FLOAT DEFAULT 0,
+    remaining_quantity FLOAT,
+    price FLOAT,
+    average_fill_price FLOAT,
+    stop_price FLOAT,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    commission FLOAT DEFAULT 0,
+    commission_asset VARCHAR(20),
+    quote_quantity FLOAT,
+    pnl FLOAT,
+    error_message VARCHAR(500),
+    retry_count FLOAT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    sent_to_exchange_at TIMESTAMP WITH TIME ZONE,
+    first_fill_at TIMESTAMP WITH TIME ZONE,
+    last_fill_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    extra_data JSON
+);
+```
+
+### Next Steps for Full Integration
+
+#### Phase 3: Trading Service Layer
+- Create `TradingService` to orchestrate bot execution
+- Implement `OrderManager` for order lifecycle
+- Add `RiskManager` for pre-trade validation
+- Integrate with bot start/stop endpoints
+
+#### Phase 4: API Endpoints
+- `/api/v1/credentials` - CRUD for exchange credentials
+- `/api/v1/orders` - Order history and tracking
+- Update `/api/v1/bots` to trigger trading
+
+#### Phase 5: Background Workers
+- Celery workers for bot execution
+- Price monitoring tasks
+- Order fill detection
+- PnL calculation
+
+#### Phase 6: Frontend Integration
+- Exchange credentials management UI
+- Order history display
+- Real-time order status updates
+- Trade execution visualization
+
+### Adding New Exchanges
+
+To add a new exchange (e.g., Binance):
+
+1. **Create adapter directory**:
+```bash
+mkdir backend/app/exchanges/binance
+```
+
+2. **Implement adapter**:
+```python
+# backend/app/exchanges/binance/adapter.py
+from app.exchanges.base import BaseExchangeAdapter
+
+class BinanceAdapter(BaseExchangeAdapter):
+    @property
+    def exchange_name(self) -> str:
+        return "binance"
+
+    # Implement all abstract methods...
+```
+
+3. **Register with factory**:
+```python
+from app.exchanges.factory import ExchangeFactory
+ExchangeFactory.register('binance', BinanceAdapter)
+```
+
+4. **Update Exchange enum**:
+```python
+# backend/app/models/bot.py
+class Exchange(str, enum.Enum):
+    BINANCE = "Binance"
+    # ... other exchanges
+```
+
+### Testing
+
+```python
+# Test adapter creation
+adapter = create_exchange_adapter('coindcx', 'key', 'secret')
+assert adapter.exchange_name == 'coindcx'
+
+# Test credentials
+assert await adapter.validate_credentials()
+
+# Test order placement
+result = await adapter.place_order(...)
+assert result['order_id'] is not None
+```
+
+### Security Best Practices
+
+1. **Never log decrypted keys**: Always use encrypted values in logs
+2. **Rotate SECRET_KEY carefully**: Re-encrypt all credentials if changed
+3. **Use testnet first**: Always test with testnet before mainnet
+4. **Validate credentials**: Check API keys before storing
+5. **Rate limiting**: Implement exchange-specific rate limits
+6. **Error handling**: Gracefully handle API errors
+
+### Known Limitations
+
+1. **CoinDCX adapter**: Uses basic HTTP client, can be replaced with official library
+2. **No WebSocket**: Currently polling-based, WebSocket support pending
+3. **No order book**: Basic market data only
+4. **Single user**: Multi-user credential management pending
+5. **No position tracking**: Futures position management not implemented
+
+### Dependencies Required
+
+Add to `requirements.txt`:
+```
+httpx>=0.26.0          # HTTP client for exchange APIs
+cryptography>=41.0.0   # For Fernet encryption
+```
+
+---
+
 **Last Updated**: 2025-10-19
 **Maintained By**: Claude Sessions
 **Purpose**: Track fixes and prevent regression
