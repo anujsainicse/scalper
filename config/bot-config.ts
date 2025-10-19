@@ -67,7 +67,7 @@ export const POPULAR_TICKERS: string[] = [
   'DOGE/USDT',
   'MATIC/USDT',
   'DOT/USDT',
-  'AVAX/USDT',
+  'BTC/USDT',
   // Add more tickers here
 ];
 

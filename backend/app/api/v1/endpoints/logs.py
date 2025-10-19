@@ -30,7 +30,7 @@ async def get_activity_logs(
     if bot_id:
         query = query.where(ActivityLog.bot_id == bot_id)
 
-    query = query.offset(skip).limit(limit).order_by(ActivityLog.timestamp.desc())
+    query = query.offset(skip).limit(limit).order_by(ActivityLog.timestamp.asc())
 
     result = await db.execute(query)
     logs = result.scalars().all()
