@@ -71,3 +71,21 @@ export const POPULAR_TICKERS: string[] = [
   // Add more tickers here
 ];
 
+/**
+ * Redis Configuration for Exchange Price Data
+ * Maps exchange name to Redis database and key prefix
+ */
+export interface ExchangeRedisConfig {
+  exchangeName: string;     // Display name (e.g., 'CoinDCX F')
+  redisDb: number;          // Redis database number (0-15)
+  redisPrefix: string;      // Redis key prefix (e.g., 'coindcx_futures')
+}
+
+export const EXCHANGE_REDIS_CONFIG: ExchangeRedisConfig[] = [
+  {
+    exchangeName: 'CoinDCX F',
+    redisDb: 0,
+    redisPrefix: 'coindcx_futures'
+  },
+];
+

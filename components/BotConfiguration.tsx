@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -20,7 +20,8 @@ import { Rocket, AlertCircle } from 'lucide-react';
 import { useBotStore } from '@/store/botStore';
 import { Exchange, OrderSide, BotFormData } from '@/types/bot';
 import { validateTicker } from '@/utils/formatters';
-import { EXCHANGES, QUANTITIES, TRAILING_PERCENTAGES, POPULAR_TICKERS } from '@/config/bot-config';
+import { EXCHANGES, TRAILING_PERCENTAGES, POPULAR_TICKERS } from '@/config/bot-config';
+import { api } from '@/lib/api';
 
 export const BotConfiguration: React.FC = () => {
   const addBot = useBotStore((state) => state.addBot);
@@ -43,7 +44,9 @@ export const BotConfiguration: React.FC = () => {
   });
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [showCustomQuantity, setShowCustomQuantity] = useState(false);
+  const [priceData, setPriceData] = useState<Record<string, any> | null>(null);
+  const [loadingPrice, setLoadingPrice] = useState(false);
+  const [decimalPlaces, setDecimalPlaces] = useState<number>(2);
 
   // Load bot data when editing
   React.useEffect(() => {
@@ -61,30 +64,79 @@ export const BotConfiguration: React.FC = () => {
           trailingPercent: bot.trailingPercent,
           infiniteLoop: bot.infiniteLoop,
         });
-        setShowCustomQuantity(false);
       }
     }
   }, [editingBotId, bots]);
+
+  // Helper function to calculate decimal places from a number
+  const getDecimalPlaces = (value: string | number): number => {
+    const strValue = String(value);
+    if (strValue.includes('.')) {
+      return strValue.split('.')[1].length;
+    }
+    return 0;
+  };
+
+  // Helper function to round to specific decimal places
+  const roundToDecimalPlaces = (value: number, places: number): number => {
+    const multiplier = Math.pow(10, places);
+    return Math.round(value * multiplier) / multiplier;
+  };
+
+  // Fetch price data when ticker or exchange changes
+  useEffect(() => {
+    const fetchPriceData = async () => {
+      if (!formData.ticker || !formData.exchange) return;
+
+      setLoadingPrice(true);
+      try {
+        const response = await api.getLTPData(formData.exchange, formData.ticker);
+        if (response.success && response.data) {
+          setPriceData(response.data);
+          // Calculate decimal places from LTP
+          if (response.data.ltp) {
+            const ltpDecimalPlaces = getDecimalPlaces(response.data.ltp);
+            setDecimalPlaces(ltpDecimalPlaces);
+
+            // Set buy price 2% below LTP and sell price 2% above LTP
+            const currentPrice = Number(response.data.ltp);
+            const buyPrice = roundToDecimalPlaces(currentPrice * 0.98, ltpDecimalPlaces);
+            const sellPrice = roundToDecimalPlaces(currentPrice * 1.02, ltpDecimalPlaces);
+
+            setFormData((prev) => ({
+              ...prev,
+              buyPrice,
+              sellPrice,
+            }));
+          }
+        } else {
+          setPriceData(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch price data:', error);
+        setPriceData(null);
+      } finally {
+        setLoadingPrice(false);
+      }
+    };
+
+    fetchPriceData();
+  }, [formData.ticker, formData.exchange]);
 
   const handleInputChange = (
     field: keyof BotFormData,
     value: string | number | boolean
   ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Round numeric values for quantity, buyPrice, and sellPrice based on LTP decimal places
+    let processedValue = value;
+    if (typeof value === 'number' && (field === 'quantity' || field === 'buyPrice' || field === 'sellPrice')) {
+      processedValue = roundToDecimalPlaces(value, decimalPlaces);
+    }
+
+    setFormData((prev) => ({ ...prev, [field]: processedValue }));
     // Clear errors when user starts typing
     if (validationErrors.length > 0) {
       setValidationErrors([]);
-    }
-  };
-
-  const handleQuantityChange = (value: string) => {
-    const numValue = Number(value);
-    if (numValue === 0) {
-      setShowCustomQuantity(true);
-      setFormData((prev) => ({ ...prev, quantity: 0 }));
-    } else {
-      setShowCustomQuantity(false);
-      setFormData((prev) => ({ ...prev, quantity: numValue, customQuantity: undefined }));
     }
   };
 
@@ -99,7 +151,7 @@ export const BotConfiguration: React.FC = () => {
     }
 
     // Quantity validation
-    if (showCustomQuantity && (!formData.customQuantity || formData.customQuantity <= 0)) {
+    if (!formData.quantity || formData.quantity <= 0) {
       errors.push('Quantity must be greater than 0');
     }
 
@@ -151,6 +203,17 @@ export const BotConfiguration: React.FC = () => {
         toast.success(`✅ Bot created for ${formattedData.ticker}`);
       }
 
+      // Calculate default prices if price data is available
+      let defaultBuyPrice = 0;
+      let defaultSellPrice = 0;
+
+      if (priceData && priceData.ltp) {
+        const currentPrice = Number(priceData.ltp);
+        const ltpDecimalPlaces = getDecimalPlaces(priceData.ltp);
+        defaultBuyPrice = roundToDecimalPlaces(currentPrice * 0.98, ltpDecimalPlaces);
+        defaultSellPrice = roundToDecimalPlaces(currentPrice * 1.02, ltpDecimalPlaces);
+      }
+
       // Reset form
       setFormData({
         ticker: POPULAR_TICKERS[0] || '',
@@ -158,12 +221,11 @@ export const BotConfiguration: React.FC = () => {
         firstOrder: 'BUY',
         quantity: 1,
         customQuantity: undefined,
-        buyPrice: 0,
-        sellPrice: 0,
+        buyPrice: defaultBuyPrice,
+        sellPrice: defaultSellPrice,
         trailingPercent: undefined,
         infiniteLoop: false,
       });
-      setShowCustomQuantity(false);
       setEditingBot(null);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save bot';
@@ -179,25 +241,6 @@ export const BotConfiguration: React.FC = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="ticker">Ticker</Label>
-            <Select
-              value={formData.ticker}
-              onValueChange={(value) => handleInputChange('ticker', value)}
-            >
-              <SelectTrigger id="ticker">
-                <SelectValue placeholder="Select a ticker" />
-              </SelectTrigger>
-              <SelectContent>
-                {POPULAR_TICKERS.map((ticker) => (
-                  <SelectItem key={ticker} value={ticker}>
-                    {ticker}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="exchange">Exchange</Label>
             <Select
@@ -218,78 +261,288 @@ export const BotConfiguration: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <Label>First Order</Label>
-            <RadioGroup
-              value={formData.firstOrder}
-              onValueChange={(value) => handleInputChange('firstOrder', value as OrderSide)}
-              className="flex gap-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="BUY" id="buy" />
-                <Label htmlFor="buy" className="font-normal cursor-pointer">Buy</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="SELL" id="sell" />
-                <Label htmlFor="sell" className="font-normal cursor-pointer">Sell</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity</Label>
+            <Label htmlFor="ticker">Ticker</Label>
             <Select
-              value={formData.quantity.toString()}
-              onValueChange={handleQuantityChange}
+              value={formData.ticker}
+              onValueChange={(value) => handleInputChange('ticker', value)}
             >
-              <SelectTrigger id="quantity">
-                <SelectValue />
+              <SelectTrigger id="ticker">
+                <SelectValue placeholder="Select a ticker" />
               </SelectTrigger>
               <SelectContent>
-                {QUANTITIES.map((qty) => (
-                  <SelectItem key={qty.value.toString()} value={qty.value.toString()}>
-                    {qty.label}
+                {POPULAR_TICKERS.map((ticker) => (
+                  <SelectItem key={ticker} value={ticker}>
+                    {ticker}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {showCustomQuantity && (
-            <div className="space-y-2">
-              <Label htmlFor="customQuantity">Custom Quantity</Label>
-              <Input
-                id="customQuantity"
-                type="number"
-                step="0.01"
-                placeholder="Enter custom quantity"
-                value={formData.customQuantity || ''}
-                onChange={(e) => handleInputChange('customQuantity', Number(e.target.value))}
-              />
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2 flex-1">
+              <Label>First Order</Label>
+              <RadioGroup
+                value={formData.firstOrder}
+                onValueChange={(value) => handleInputChange('firstOrder', value as OrderSide)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="BUY" id="buy" />
+                  <Label htmlFor="buy" className="font-normal cursor-pointer">Buy</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="SELL" id="sell" />
+                  <Label htmlFor="sell" className="font-normal cursor-pointer">Sell</Label>
+                </div>
+              </RadioGroup>
             </div>
-          )}
+
+            {/* Price Data Display */}
+            <div className="flex items-center justify-center min-w-[120px]">
+              {loadingPrice ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : priceData && priceData.ltp ? (
+                <p className="text-2xl font-bold text-green-500">{priceData.ltp}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="quantity">Quantity</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 10))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -10
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 5))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -5
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 2))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -2
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 1))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -1
+                </Button>
+              </div>
+              <Input
+                id="quantity"
+                type="number"
+                step={decimalPlaces > 0 ? Math.pow(10, -decimalPlaces).toFixed(decimalPlaces) : '1'}
+                placeholder="Enter quantity"
+                value={formData.quantity || ''}
+                onChange={(e) => handleInputChange('quantity', Number(e.target.value))}
+                className="flex-1 text-center"
+              />
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 1)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +1
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 2)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +2
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 5)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +5
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 10)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +10
+                </Button>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="buyPrice">Buy Price</Label>
-            <Input
-              id="buyPrice"
-              type="number"
-              step="0.01"
-              placeholder="Enter buy price"
-              value={formData.buyPrice || ''}
-              onChange={(e) => handleInputChange('buyPrice', Number(e.target.value))}
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('buyPrice', Math.max(0, (formData.buyPrice || 0) * 0.99))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -1%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('buyPrice', Math.max(0, (formData.buyPrice || 0) * 0.995))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -0.5%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('buyPrice', Math.max(0, (formData.buyPrice || 0) * 0.999))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -0.1%
+                </Button>
+              </div>
+              <Input
+                id="buyPrice"
+                type="number"
+                step={decimalPlaces > 0 ? Math.pow(10, -decimalPlaces).toFixed(decimalPlaces) : '1'}
+                placeholder="Enter buy price"
+                value={formData.buyPrice || ''}
+                onChange={(e) => handleInputChange('buyPrice', Number(e.target.value))}
+                className="flex-1 text-center"
+              />
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('buyPrice', (formData.buyPrice || 0) * 1.001)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +0.1%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('buyPrice', (formData.buyPrice || 0) * 1.005)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +0.5%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('buyPrice', (formData.buyPrice || 0) * 1.01)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +1%
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="sellPrice">Sell Price</Label>
-            <Input
-              id="sellPrice"
-              type="number"
-              step="0.01"
-              placeholder="Enter sell price"
-              value={formData.sellPrice || ''}
-              onChange={(e) => handleInputChange('sellPrice', Number(e.target.value))}
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('sellPrice', Math.max(0, (formData.sellPrice || 0) * 0.99))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -1%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('sellPrice', Math.max(0, (formData.sellPrice || 0) * 0.995))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -0.5%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('sellPrice', Math.max(0, (formData.sellPrice || 0) * 0.999))}
+                  className="px-2 text-red-500 hover:text-red-600"
+                >
+                  -0.1%
+                </Button>
+              </div>
+              <Input
+                id="sellPrice"
+                type="number"
+                step={decimalPlaces > 0 ? Math.pow(10, -decimalPlaces).toFixed(decimalPlaces) : '1'}
+                placeholder="Enter sell price"
+                value={formData.sellPrice || ''}
+                onChange={(e) => handleInputChange('sellPrice', Number(e.target.value))}
+                className="flex-1 text-center"
+              />
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('sellPrice', (formData.sellPrice || 0) * 1.001)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +0.1%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('sellPrice', (formData.sellPrice || 0) * 1.005)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +0.5%
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleInputChange('sellPrice', (formData.sellPrice || 0) * 1.01)}
+                  className="px-2 text-green-500 hover:text-green-600"
+                >
+                  +1%
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -357,7 +610,6 @@ export const BotConfiguration: React.FC = () => {
                     trailingPercent: undefined,
                     infiniteLoop: false,
                   });
-                  setShowCustomQuantity(false);
                 }}
               >
                 Cancel

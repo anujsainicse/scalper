@@ -82,6 +82,11 @@ class ApiClient {
       throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
 
+    // Handle 204 No Content responses (no body to parse)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return null as T;
+    }
+
     return response.json();
   }
 
@@ -185,6 +190,23 @@ class ApiClient {
 
   async getLogCounts(): Promise<Record<string, number>> {
     return this.request<Record<string, number>>('/logs/count');
+  }
+
+  // Price endpoints
+  async getLTPData(exchange: string, ticker: string): Promise<{
+    success: boolean;
+    redis_key?: string;
+    exchange?: string;
+    ticker?: string;
+    base_symbol?: string;
+    data?: Record<string, any>;
+    message?: string;
+  }> {
+    const params = new URLSearchParams();
+    params.append('exchange', exchange);
+    params.append('ticker', ticker);
+
+    return this.request<any>(`/price/ltp?${params.toString()}`);
   }
 }
 
