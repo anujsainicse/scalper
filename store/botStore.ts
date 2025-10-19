@@ -97,7 +97,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
   addBot: async (formData: BotFormData) => {
     set({ isLoading: true, error: null });
     try {
-      const apiBot = await api.createBot({
+      await api.createBot({
         ticker: formData.ticker,
         exchange: formData.exchange,
         first_order: formData.firstOrder,
@@ -108,15 +108,13 @@ export const useBotStore = create<BotStore>((set, get) => ({
         infinite_loop: formData.infiniteLoop,
       });
 
-      const newBot = apiToActiveBot(apiBot);
-
-      set((state) => ({
-        bots: [...state.bots, newBot],
-        isLoading: false,
-      }));
+      // Fetch updated bots from server to avoid duplicates
+      await get().fetchBots();
 
       // Refresh logs to get the new bot creation log
       await get().fetchLogs();
+
+      set({ isLoading: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to create bot',
@@ -160,7 +158,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
   updateBotFromForm: async (botId: string, formData: BotFormData) => {
     set({ isLoading: true, error: null });
     try {
-      const apiBot = await api.updateBot(botId, {
+      await api.updateBot(botId, {
         ticker: formData.ticker,
         exchange: formData.exchange,
         first_order: formData.firstOrder,
@@ -171,16 +169,16 @@ export const useBotStore = create<BotStore>((set, get) => ({
         infinite_loop: formData.infiniteLoop,
       });
 
-      const updatedBot = apiToActiveBot(apiBot);
-
-      set((state) => ({
-        bots: state.bots.map((b) => b.id === botId ? updatedBot : b),
-        editingBotId: null,
-        isLoading: false,
-      }));
+      // Fetch updated bots from server to avoid duplicates
+      await get().fetchBots();
 
       // Refresh logs
       await get().fetchLogs();
+
+      set({
+        editingBotId: null,
+        isLoading: false,
+      });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to update bot',
@@ -199,16 +197,15 @@ export const useBotStore = create<BotStore>((set, get) => ({
   toggleBot: async (botId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const apiBot = await api.toggleBot(botId);
-      const updatedBot = apiToActiveBot(apiBot);
+      await api.toggleBot(botId);
 
-      set((state) => ({
-        bots: state.bots.map((b) => b.id === botId ? updatedBot : b),
-        isLoading: false,
-      }));
+      // Fetch updated bots from server to avoid duplicates
+      await get().fetchBots();
 
       // Refresh logs
       await get().fetchLogs();
+
+      set({ isLoading: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to toggle bot',
