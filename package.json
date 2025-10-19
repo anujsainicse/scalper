@@ -3,9 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev:frontend": "next dev --turbopack",
+    "dev:backend": "./backend/start-dev.sh",
+    "dev:all": "concurrently \"npm:dev:frontend\" \"npm:dev:backend\" --names \"NEXT,API\" --prefix-colors \"cyan,magenta\"",
+    "predev": "npm run kill:ports",
+    "dev": "npm run dev:all",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "kill:ports": "lsof -ti:3000,8000 | xargs kill -9 2>/dev/null || true"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -31,6 +36,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

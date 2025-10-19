@@ -3,9 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List
 from uuid import UUID
+import logging
 
 from app.db.session import get_db
-from app.models.bot import Bot, ActivityLog, BotStatus
+from app.models.bot import Bot, ActivityLog, BotStatus, OrderSide as BotOrderSide
+from app.models.order import Order as OrderModel, OrderStatus as DBOrderStatus, OrderType as DBOrderType
 from app.schemas.bot import (
     BotCreate,
     BotUpdate,
@@ -15,9 +17,44 @@ from app.schemas.bot import (
     ActivityLogResponse,
     ActivityLogCreate
 )
+from app.schemas.order import OrderResponse
 from app.services.telegram import telegram_service
+from app.exchanges import ExchangeFactory, OrderRequest, OrderSide, OrderType, BaseExchange
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def get_exchange_for_bot(bot: Bot) -> BaseExchange:
+    """
+    Get exchange adapter for a bot
+
+    Args:
+        bot: Bot instance
+
+    Returns:
+        Initialized exchange adapter
+
+    Raises:
+        ValueError: If exchange is not supported or credentials missing
+    """
+    # Map bot exchange to exchange name for factory
+    exchange_map = {
+        "CoinDCX F": "coindcx",
+        "Binance": "binance",
+    }
+
+    exchange_name = exchange_map.get(bot.exchange.value)
+    if not exchange_name:
+        raise ValueError(f"Exchange {bot.exchange.value} not supported")
+
+    # Create exchange adapter
+    try:
+        exchange = ExchangeFactory.create_sync(exchange_name)
+        return exchange
+    except Exception as e:
+        logger.error(f"Failed to create exchange adapter for {exchange_name}: {e}")
+        raise ValueError(f"Failed to initialize exchange: {str(e)}")
 
 
 @router.get("/", response_model=List[BotResponse])
@@ -49,9 +86,9 @@ async def create_bot(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Create a new bot
+    Create a new bot and place initial order on exchange
     """
-    # Create bot
+    # Create bot with ACTIVE status
     bot = Bot(
         ticker=bot_data.ticker,
         exchange=bot_data.exchange,
@@ -61,36 +98,117 @@ async def create_bot(
         sell_price=bot_data.sell_price,
         trailing_percent=bot_data.trailing_percent,
         infinite_loop=bot_data.infinite_loop,
-        status=BotStatus.ACTIVE,  # Start as ACTIVE by default
+        status=BotStatus.ACTIVE,
     )
 
     db.add(bot)
     await db.flush()
 
-    # Create activity log
-    log = ActivityLog(
-        bot_id=bot.id,
-        level="SUCCESS",
-        message=f"Bot started for {bot.ticker} on {bot.exchange.value}"
-    )
-    db.add(log)
+    try:
+        # Get exchange adapter
+        exchange = get_exchange_for_bot(bot)
 
-    await db.commit()
-    await db.refresh(bot)
+        # Determine order side and price based on first_order
+        order_side = OrderSide.BUY if bot.first_order == BotOrderSide.BUY else OrderSide.SELL
+        order_price = bot.buy_price if bot.first_order == BotOrderSide.BUY else bot.sell_price
 
-    # Send Telegram notification
-    await telegram_service.send_notification(
-        db=db,
-        message=f"*Bot Created*\n\n"
-                f"Ticker: {bot.ticker}\n"
-                f"Exchange: {bot.exchange.value}\n"
-                f"Quantity: {bot.quantity}\n"
-                f"Buy Price: ${bot.buy_price}\n"
-                f"Sell Price: ${bot.sell_price}",
-        level="SUCCESS"
-    )
+        # Create order request
+        order_request = OrderRequest(
+            symbol=bot.ticker,
+            side=order_side,
+            order_type=OrderType.LIMIT,
+            quantity=float(bot.quantity),
+            price=float(order_price),
+            leverage=1,
+            time_in_force="GTC"
+        )
 
-    return bot
+        logger.info(f"Placing {order_side.value} order for new bot {bot.id}: {bot.ticker} @ {order_price}")
+
+        # Place order on exchange
+        order_response = await exchange.place_order(order_request)
+
+        # Create order record in database
+        db_order = OrderModel(
+            bot_id=bot.id,
+            exchange_order_id=order_response.order_id,
+            symbol=bot.ticker,
+            side=bot.first_order,
+            order_type=DBOrderType.LIMIT,
+            quantity=bot.quantity,
+            price=order_price,
+            status=DBOrderStatus.PENDING,
+            filled_quantity=float(order_response.filled_quantity),
+            filled_price=float(order_response.average_price) if order_response.average_price else None,
+            commission=0.0
+        )
+        db.add(db_order)
+
+        # Create activity log
+        log = ActivityLog(
+            bot_id=bot.id,
+            level="SUCCESS",
+            message=f"Bot started and {order_side.value} order placed at ${order_price}"
+        )
+        db.add(log)
+
+        await db.commit()
+        await db.refresh(bot)
+
+        # Send Telegram notification
+        await telegram_service.send_notification(
+            db=db,
+            message=f"*Bot Started*\n\n"
+                    f"Ticker: {bot.ticker}\n"
+                    f"Exchange: {bot.exchange.value}\n"
+                    f"Order: {order_side.value} {bot.quantity} @ ${order_price}\n"
+                    f"Order ID: {order_response.order_id}\n"
+                    f"Status: ACTIVE",
+            level="SUCCESS"
+        )
+
+        logger.info(f"Bot {bot.id} started successfully with order {order_response.order_id}")
+        return bot
+
+    except ValueError as ve:
+        # Exchange configuration error
+        logger.error(f"Exchange configuration error for new bot: {ve}")
+
+        bot.status = BotStatus.ERROR
+
+        log = ActivityLog(
+            bot_id=bot.id,
+            level="ERROR",
+            message=f"Failed to start bot: {str(ve)}"
+        )
+        db.add(log)
+
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Exchange configuration error: {str(ve)}"
+        )
+
+    except Exception as e:
+        # Order placement failed
+        logger.error(f"Failed to place order for new bot: {e}")
+
+        bot.status = BotStatus.ERROR
+
+        log = ActivityLog(
+            bot_id=bot.id,
+            level="ERROR",
+            message=f"Failed to place order: {str(e)}"
+        )
+        db.add(log)
+
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to place order on exchange: {str(e)}"
+        )
 
 
 @router.get("/{bot_id}", response_model=BotResponse)
@@ -191,7 +309,7 @@ async def start_bot(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Start a bot (set status to ACTIVE)
+    Start a bot and place initial order on exchange
     """
     result = await db.execute(select(Bot).where(Bot.id == bot_id))
     bot = result.scalar_one_or_none()
@@ -199,29 +317,114 @@ async def start_bot(
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
 
-    bot.status = BotStatus.ACTIVE
+    try:
+        # Get exchange adapter
+        exchange = get_exchange_for_bot(bot)
 
-    log = ActivityLog(
-        bot_id=bot.id,
-        level="SUCCESS",
-        message=f"Bot started for {bot.ticker}"
-    )
-    db.add(log)
+        # Determine order side and price based on first_order
+        order_side = OrderSide.BUY if bot.first_order == BotOrderSide.BUY else OrderSide.SELL
+        order_price = bot.buy_price if bot.first_order == BotOrderSide.BUY else bot.sell_price
 
-    await db.commit()
-    await db.refresh(bot)
+        # Create order request
+        order_request = OrderRequest(
+            symbol=bot.ticker,  # e.g., "ETH/USDT"
+            side=order_side,
+            order_type=OrderType.LIMIT,
+            quantity=float(bot.quantity),
+            price=float(order_price),
+            leverage=1,
+            time_in_force="GTC"
+        )
 
-    # Send Telegram notification
-    await telegram_service.send_notification(
-        db=db,
-        message=f"*Bot Started*\n\n"
-                f"Ticker: {bot.ticker}\n"
-                f"Exchange: {bot.exchange.value}\n"
-                f"Status: ACTIVE",
-        level="SUCCESS"
-    )
+        logger.info(f"Placing {order_side.value} order for bot {bot.id}: {bot.ticker} @ {order_price}")
 
-    return bot
+        # Place order on exchange
+        order_response = await exchange.place_order(order_request)
+
+        # Create order record in database
+        db_order = OrderModel(
+            bot_id=bot.id,
+            exchange_order_id=order_response.order_id,
+            symbol=bot.ticker,
+            side=bot.first_order,
+            order_type=DBOrderType.LIMIT,
+            quantity=bot.quantity,
+            price=order_price,
+            status=DBOrderStatus.PENDING,
+            filled_quantity=float(order_response.filled_quantity),
+            filled_price=float(order_response.average_price) if order_response.average_price else None,
+            commission=0.0
+        )
+        db.add(db_order)
+
+        # Set bot status to ACTIVE
+        bot.status = BotStatus.ACTIVE
+
+        # Create activity log
+        log = ActivityLog(
+            bot_id=bot.id,
+            level="SUCCESS",
+            message=f"Bot started and {order_side.value} order placed at ${order_price}"
+        )
+        db.add(log)
+
+        await db.commit()
+        await db.refresh(bot)
+
+        # Send Telegram notification
+        await telegram_service.send_notification(
+            db=db,
+            message=f"*Bot Started*\n\n"
+                    f"Ticker: {bot.ticker}\n"
+                    f"Exchange: {bot.exchange.value}\n"
+                    f"Order: {order_side.value} {bot.quantity} @ ${order_price}\n"
+                    f"Order ID: {order_response.order_id}\n"
+                    f"Status: ACTIVE",
+            level="SUCCESS"
+        )
+
+        logger.info(f"Bot {bot.id} started successfully with order {order_response.order_id}")
+        return bot
+
+    except ValueError as ve:
+        # Exchange configuration error
+        logger.error(f"Exchange configuration error for bot {bot.id}: {ve}")
+
+        bot.status = BotStatus.ERROR
+
+        log = ActivityLog(
+            bot_id=bot.id,
+            level="ERROR",
+            message=f"Failed to start bot: {str(ve)}"
+        )
+        db.add(log)
+
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Exchange configuration error: {str(ve)}"
+        )
+
+    except Exception as e:
+        # Order placement failed
+        logger.error(f"Failed to place order for bot {bot.id}: {e}")
+
+        bot.status = BotStatus.ERROR
+
+        log = ActivityLog(
+            bot_id=bot.id,
+            level="ERROR",
+            message=f"Failed to place order: {str(e)}"
+        )
+        db.add(log)
+
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to place order on exchange: {str(e)}"
+        )
 
 
 @router.post("/{bot_id}/stop", response_model=BotResponse)
@@ -230,7 +433,7 @@ async def stop_bot(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Stop a bot (set status to STOPPED)
+    Stop a bot and cancel all pending orders
     """
     result = await db.execute(select(Bot).where(Bot.id == bot_id))
     bot = result.scalar_one_or_none()
@@ -238,12 +441,69 @@ async def stop_bot(
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
 
+    # Get all pending orders for this bot
+    pending_orders_query = select(OrderModel).where(
+        OrderModel.bot_id == bot_id,
+        OrderModel.status == DBOrderStatus.PENDING
+    )
+    pending_orders_result = await db.execute(pending_orders_query)
+    pending_orders = pending_orders_result.scalars().all()
+
+    cancelled_count = 0
+    failed_cancellations = []
+
+    # Cancel orders on exchange if there are any pending orders
+    if pending_orders:
+        try:
+            # Get exchange adapter
+            exchange = get_exchange_for_bot(bot)
+
+            for order in pending_orders:
+                try:
+                    # Cancel order on exchange
+                    success = await exchange.cancel_order(order.exchange_order_id, order.symbol)
+
+                    if success:
+                        # Update order status in database
+                        order.status = DBOrderStatus.CANCELLED
+                        cancelled_count += 1
+                        logger.info(f"Cancelled order {order.exchange_order_id} for bot {bot.id}")
+                    else:
+                        failed_cancellations.append(order.exchange_order_id)
+                        logger.warning(f"Failed to cancel order {order.exchange_order_id}")
+
+                except Exception as e:
+                    failed_cancellations.append(order.exchange_order_id)
+                    logger.error(f"Error cancelling order {order.exchange_order_id}: {e}")
+
+        except ValueError as ve:
+            # Exchange configuration error - still stop bot but log the error
+            logger.error(f"Exchange configuration error while stopping bot {bot.id}: {ve}")
+            log = ActivityLog(
+                bot_id=bot.id,
+                level="WARNING",
+                message=f"Could not cancel orders: {str(ve)}"
+            )
+            db.add(log)
+
+    # Set bot status to STOPPED
     bot.status = BotStatus.STOPPED
+
+    # Create activity log
+    if pending_orders:
+        if cancelled_count > 0:
+            log_message = f"Bot stopped and {cancelled_count} pending order(s) cancelled"
+            if failed_cancellations:
+                log_message += f" ({len(failed_cancellations)} failed)"
+        else:
+            log_message = f"Bot stopped ({len(pending_orders)} order(s) could not be cancelled)"
+    else:
+        log_message = f"Bot stopped (no pending orders)"
 
     log = ActivityLog(
         bot_id=bot.id,
         level="WARNING",
-        message=f"Bot stopped for {bot.ticker}"
+        message=log_message
     )
     db.add(log)
 
@@ -251,14 +511,24 @@ async def stop_bot(
     await db.refresh(bot)
 
     # Send Telegram notification
+    telegram_msg = (
+        f"*Bot Stopped*\n\n"
+        f"Ticker: {bot.ticker}\n"
+        f"Exchange: {bot.exchange.value}\n"
+    )
+
+    if pending_orders:
+        telegram_msg += f"Orders Cancelled: {cancelled_count}/{len(pending_orders)}\n"
+
+    telegram_msg += f"Status: STOPPED"
+
     await telegram_service.send_notification(
         db=db,
-        message=f"*Bot Stopped*\n\n"
-                f"Ticker: {bot.ticker}\n"
-                f"Exchange: {bot.exchange.value}\n"
-                f"Status: STOPPED",
+        message=telegram_msg,
         level="WARNING"
     )
+
+    logger.info(f"Bot {bot.id} stopped. Cancelled {cancelled_count}/{len(pending_orders)} orders")
 
     return bot
 
@@ -364,3 +634,28 @@ async def get_statistics(
         "total_pnl": total_pnl,
         "total_trades": total_trades
     }
+
+
+@router.get("/{bot_id}/orders", response_model=List[OrderResponse])
+async def get_bot_orders(
+    bot_id: UUID,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all orders for a specific bot
+    """
+    # Verify bot exists
+    bot_result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    bot = bot_result.scalar_one_or_none()
+
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+
+    # Get orders for this bot
+    query = select(Order).where(Order.bot_id == bot_id).offset(skip).limit(limit).order_by(Order.created_at.desc())
+    result = await db.execute(query)
+    orders = result.scalars().all()
+
+    return orders

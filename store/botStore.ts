@@ -197,7 +197,21 @@ export const useBotStore = create<BotStore>((set, get) => ({
   toggleBot: async (botId: string) => {
     set({ isLoading: true, error: null });
     try {
-      await api.toggleBot(botId);
+      // Get the bot's current status
+      const bot = get().bots.find((b) => b.id === botId);
+
+      if (!bot) {
+        throw new Error('Bot not found');
+      }
+
+      // Call the appropriate endpoint based on current status
+      if (bot.status === 'ACTIVE') {
+        // Stop bot and cancel pending orders
+        await api.stopBot(botId);
+      } else {
+        // Start bot and place initial order
+        await api.startBot(botId);
+      }
 
       // Fetch updated bots from server to avoid duplicates
       await get().fetchBots();

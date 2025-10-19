@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, Enum as SQLEnum, JSON
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.session import Base
 import uuid
@@ -51,6 +52,9 @@ class Bot(Base):
 
     # Additional metadata
     config = Column(JSON, nullable=True)  # For storing additional configuration
+
+    # Relationships
+    orders = relationship("Order", back_populates="bot", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Bot(id={self.id}, ticker={self.ticker}, status={self.status})>"

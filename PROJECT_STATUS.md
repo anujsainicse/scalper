@@ -438,6 +438,21 @@ response = await exchange.place_order(order)
 
 **Files Changed:** `backend/app/exchanges/coindcx/adapter.py` (lines 69-73)
 
+#### 7.5 Stop Button Order Cancellation Fix
+**Date:** 2025-10-19
+
+**Issue:** Stop button changed bot status to STOPPED but did not cancel pending orders on CoinDCX exchange
+
+**Root Cause:** Frontend `toggleBot` function was calling `/bots/{id}/toggle` endpoint which only updates database status. The correct `/bots/{id}/stop` endpoint (which cancels orders on exchange) was never being called.
+
+**Solution:** Modified `toggleBot` to check bot's current status and call the appropriate endpoint:
+- If bot is ACTIVE → call `api.stopBot()` to cancel pending orders and stop bot
+- If bot is STOPPED → call `api.startBot()` to place initial order and start bot
+
+**Files Changed:** `store/botStore.ts` (lines 197-230)
+
+**Result:** Stop button now properly cancels pending orders on the exchange. Activity logs confirm: "Bot stopped and N pending order(s) cancelled"
+
 ---
 
 ## 🔧 Technical Stack Details

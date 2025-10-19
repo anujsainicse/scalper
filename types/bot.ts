@@ -6,6 +6,10 @@ export type BotStatus = 'ACTIVE' | 'STOPPED';
 
 export type LogLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'TELEGRAM';
 
+export type OrderStatus = 'PENDING' | 'FILLED' | 'PARTIALLY_FILLED' | 'CANCELLED' | 'FAILED';
+
+export type OrderType = 'LIMIT' | 'MARKET';
+
 export interface BotConfig {
   id: string;
   ticker: string;
@@ -45,4 +49,21 @@ export interface BotFormData {
   sellPrice: number;
   trailingPercent?: number;
   infiniteLoop: boolean;
+}
+
+export interface Order {
+  id: string;
+  botId: string;
+  exchangeOrderId?: string;
+  symbol: string;
+  side: OrderSide;
+  orderType: OrderType;
+  quantity: number;
+  price?: number;
+  status: OrderStatus;
+  filledQuantity: number;
+  filledPrice?: number;
+  commission: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
