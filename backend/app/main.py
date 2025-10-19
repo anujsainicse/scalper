@@ -17,12 +17,13 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting Scalper Bot API...")
 
-    # Create database tables
-    async with engine.begin() as conn:
-        # await conn.run_sync(Base.metadata.drop_all)  # Uncomment to reset DB
-        await conn.run_sync(Base.metadata.create_all)
+    # Database tables are managed by Alembic migrations
+    # To apply migrations, run: alembic upgrade head
+    # To create new migrations, run: alembic revision --autogenerate -m "description"
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.create_all)
 
-    print("✅ Database tables created")
+    print("✅ Database ready (migrations managed by Alembic)")
 
     # Initialize Telegram bot
     if settings.TELEGRAM_BOT_TOKEN:
