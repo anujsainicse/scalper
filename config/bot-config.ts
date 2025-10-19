@@ -16,7 +16,7 @@ export interface ConfigItem {
  */
 export const EXCHANGES: ConfigItem[] = [
   { value: 'CoinDCX F', label: 'CoinDCX F' },
-  { value: 'Binance', label: 'Binance' },
+  { value: 'Bybit', label: 'Bybit' },
   // Add more exchanges here:
   // { value: 'Kraken', label: 'Kraken' },
   // { value: 'Coinbase', label: 'Coinbase' },
@@ -62,11 +62,6 @@ export const POPULAR_TICKERS: string[] = [
   'ETH/USDT',
   'BNB/USDT',
   'SOL/USDT',
-  'XRP/USDT',
-  'ADA/USDT',
-  'DOGE/USDT',
-  'MATIC/USDT',
-  'DOT/USDT',
   'BTC/USDT',
   // Add more tickers here
 ];

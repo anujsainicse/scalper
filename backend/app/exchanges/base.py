@@ -1,260 +1,291 @@
 """
-Base Exchange Adapter
-
-Defines the abstract interface that all exchange adapters must implement.
-This ensures consistent behavior across different exchanges.
+Base classes and interfaces for exchange integrations
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
+from typing import Dict, List, Optional, Any
 from enum import Enum
-from decimal import Decimal
+from dataclasses import dataclass
+from datetime import datetime
 
 
-class OrderType(str, Enum):
-    """Supported order types"""
-    MARKET = "MARKET"
-    LIMIT = "LIMIT"
-    STOP_LOSS = "STOP_LOSS"
-    STOP_LOSS_LIMIT = "STOP_LOSS_LIMIT"
-    TAKE_PROFIT = "TAKE_PROFIT"
-    TAKE_PROFIT_LIMIT = "TAKE_PROFIT_LIMIT"
-
-
-class OrderStatus(str, Enum):
-    """Order execution status"""
-    PENDING = "PENDING"
-    OPEN = "OPEN"
-    PARTIALLY_FILLED = "PARTIALLY_FILLED"
-    FILLED = "FILLED"
-    CANCELLED = "CANCELLED"
-    REJECTED = "REJECTED"
-    EXPIRED = "EXPIRED"
-    FAILED = "FAILED"
-
-
-class OrderSide(str, Enum):
+class OrderSide(Enum):
     """Order side"""
-    BUY = "BUY"
-    SELL = "SELL"
+    BUY = "buy"
+    SELL = "sell"
 
 
-class BaseExchangeAdapter(ABC):
+class OrderType(Enum):
+    """Order types"""
+    MARKET = "market"
+    LIMIT = "limit"
+    STOP_LOSS = "stop_loss"
+    TAKE_PROFIT = "take_profit"
+
+
+class OrderStatus(Enum):
+    """Order status"""
+    OPEN = "open"
+    FILLED = "filled"
+    CANCELLED = "cancelled"
+    REJECTED = "rejected"
+    PARTIALLY_FILLED = "partially_filled"
+
+
+@dataclass
+class OrderRequest:
+    """Standardized order request across all exchanges"""
+    symbol: str  # Standard format: "ETH/USDT"
+    side: OrderSide
+    order_type: OrderType
+    quantity: float
+    price: Optional[float] = None
+    leverage: Optional[int] = 1
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
+    time_in_force: str = "GTC"  # Good Till Cancel
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class OrderResponse:
+    """Standardized order response"""
+    order_id: str
+    symbol: str
+    side: OrderSide
+    status: OrderStatus
+    order_type: OrderType
+    quantity: float
+    filled_quantity: float
+    price: Optional[float]
+    average_price: Optional[float]
+    timestamp: str
+    exchange_specific: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class Position:
+    """Standardized position representation"""
+    symbol: str
+    size: float  # positive for long, negative for short
+    entry_price: float
+    current_price: float
+    unrealized_pnl: float
+    realized_pnl: float
+    leverage: int
+    liquidation_price: Optional[float] = None
+
+
+class BaseExchange(ABC):
     """
-    Abstract base class for exchange adapters.
-
-    All exchange implementations must inherit from this class and implement
-    all abstract methods. This ensures a consistent interface across exchanges.
+    Abstract base class for all exchange integrations.
+    Each exchange adapter must implement these methods.
     """
 
-    def __init__(
-        self,
-        api_key: str,
-        secret_key: str,
-        testnet: bool = True,
-        **kwargs
-    ):
+    def __init__(self, api_key: str, api_secret: str, testnet: bool = False):
         """
-        Initialize the exchange adapter.
+        Initialize exchange client
 
         Args:
             api_key: Exchange API key
-            secret_key: Exchange secret key
-            testnet: Whether to use testnet (default: True)
-            **kwargs: Additional exchange-specific parameters
+            api_secret: Exchange API secret
+            testnet: Use testnet (default: False)
         """
         self.api_key = api_key
-        self.secret_key = secret_key
+        self.api_secret = api_secret
         self.testnet = testnet
-        self.extra_params = kwargs
+        self.exchange_name = self.__class__.__name__
 
-    @property
-    @abstractmethod
-    def exchange_name(self) -> str:
-        """Return the exchange name"""
-        pass
+    # ============= Abstract Methods (MUST IMPLEMENT) =============
 
     @abstractmethod
-    async def validate_credentials(self) -> bool:
+    async def place_order(self, order: OrderRequest) -> OrderResponse:
         """
-        Validate API credentials by making a test request.
-
-        Returns:
-            bool: True if credentials are valid, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    async def place_order(
-        self,
-        ticker: str,
-        side: OrderSide,
-        quantity: Decimal,
-        order_type: OrderType = OrderType.LIMIT,
-        price: Optional[Decimal] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
-        """
-        Place an order on the exchange.
+        Place a new order
 
         Args:
-            ticker: Trading pair symbol (e.g., 'ETH/USDT')
-            side: Order side (BUY or SELL)
-            quantity: Order quantity
-            order_type: Type of order (MARKET, LIMIT, etc.)
-            price: Order price (required for LIMIT orders)
-            **kwargs: Additional order parameters
+            order: OrderRequest with order details
 
         Returns:
-            Dict containing:
-                - order_id: Exchange order ID
-                - status: Order status
-                - filled_quantity: Quantity filled
-                - average_price: Average fill price
-                - created_at: Order creation timestamp
-                - raw_response: Raw exchange response
+            OrderResponse with executed order details
+
+        Raises:
+            Exception: If order placement fails
         """
         pass
 
     @abstractmethod
-    async def cancel_order(
-        self,
-        order_id: str,
-        ticker: str
-    ) -> Dict[str, Any]:
+    async def cancel_order(self, order_id: str, symbol: str) -> bool:
         """
-        Cancel an existing order.
+        Cancel an order
 
         Args:
-            order_id: Exchange order ID
-            ticker: Trading pair symbol
+            order_id: Exchange-specific order ID
+            symbol: Trading pair symbol
 
         Returns:
-            Dict containing cancellation confirmation
+            True if cancelled successfully, False otherwise
         """
         pass
 
     @abstractmethod
-    async def get_order_status(
-        self,
-        order_id: str,
-        ticker: str
-    ) -> Dict[str, Any]:
+    async def get_order(self, order_id: str, symbol: str) -> OrderResponse:
         """
-        Get the status of an order.
+        Get order details
 
         Args:
-            order_id: Exchange order ID
-            ticker: Trading pair symbol
+            order_id: Exchange-specific order ID
+            symbol: Trading pair symbol
 
         Returns:
-            Dict containing:
-                - order_id: Exchange order ID
-                - status: Current order status
-                - filled_quantity: Quantity filled so far
-                - remaining_quantity: Quantity remaining
-                - average_price: Average fill price
-                - updated_at: Last update timestamp
+            OrderResponse with order details
+
+        Raises:
+            ValueError: If order not found
         """
         pass
 
     @abstractmethod
-    async def get_balance(self, asset: str) -> Dict[str, Any]:
+    async def get_open_orders(self, symbol: Optional[str] = None) -> List[OrderResponse]:
         """
-        Get balance for a specific asset.
+        Get all open orders
 
         Args:
-            asset: Asset symbol (e.g., 'USDT', 'ETH')
+            symbol: Filter by symbol (optional)
 
         Returns:
-            Dict containing:
-                - asset: Asset symbol
-                - free: Available balance
-                - locked: Locked balance
-                - total: Total balance
+            List of OrderResponse objects
         """
         pass
 
     @abstractmethod
-    async def get_market_price(self, ticker: str) -> Decimal:
+    async def get_position(self, symbol: str) -> Optional[Position]:
         """
-        Get current market price for a ticker.
+        Get current position for a symbol
 
         Args:
-            ticker: Trading pair symbol (e.g., 'ETH/USDT')
+            symbol: Trading pair symbol
 
         Returns:
-            Decimal: Current market price
+            Position object or None if no position exists
         """
         pass
 
     @abstractmethod
-    async def get_ticker_info(self, ticker: str) -> Dict[str, Any]:
+    async def get_balance(self) -> Dict[str, float]:
         """
-        Get detailed ticker information.
-
-        Args:
-            ticker: Trading pair symbol
+        Get account balance
 
         Returns:
-            Dict containing:
-                - symbol: Trading pair
-                - min_quantity: Minimum order quantity
-                - max_quantity: Maximum order quantity
-                - price_precision: Number of decimal places for price
-                - quantity_precision: Number of decimal places for quantity
-                - min_notional: Minimum order value
+            Dictionary with currency: balance pairs
         """
         pass
 
-    async def get_open_orders(self, ticker: Optional[str] = None) -> List[Dict[str, Any]]:
+    @abstractmethod
+    async def get_current_price(self, symbol: str) -> float:
         """
-        Get list of open orders.
+        Get current market price
 
         Args:
-            ticker: Optional ticker to filter orders
+            symbol: Trading pair symbol
 
         Returns:
-            List of open orders
-        """
-        # Optional method - exchanges can override
-        return []
-
-    async def get_order_history(
-        self,
-        ticker: Optional[str] = None,
-        limit: int = 100
-    ) -> List[Dict[str, Any]]:
-        """
-        Get order history.
-
-        Args:
-            ticker: Optional ticker to filter orders
-            limit: Maximum number of orders to return
-
-        Returns:
-            List of historical orders
-        """
-        # Optional method - exchanges can override
-        return []
-
-    def format_ticker(self, ticker: str) -> str:
-        """
-        Format ticker to exchange-specific format.
-
-        Args:
-            ticker: Standard ticker format (e.g., 'ETH/USDT')
-
-        Returns:
-            Exchange-specific ticker format
-        """
-        # Default implementation - exchanges can override
-        return ticker.replace('/', '')
-
-    async def close(self):
-        """
-        Close any open connections.
-
-        Called when the adapter is no longer needed.
+            Current price as float
         """
         pass
+
+    @abstractmethod
+    def normalize_symbol(self, symbol: str) -> str:
+        """
+        Convert standard symbol format to exchange-specific format
+
+        Args:
+            symbol: Standard format (e.g., "ETH/USDT")
+
+        Returns:
+            Exchange-specific format (e.g., "B-ETH_USDT" for CoinDCX)
+        """
+        pass
+
+    @abstractmethod
+    def denormalize_symbol(self, exchange_symbol: str) -> str:
+        """
+        Convert exchange-specific symbol to standard format
+
+        Args:
+            exchange_symbol: Exchange-specific format
+
+        Returns:
+            Standard format (e.g., "ETH/USDT")
+        """
+        pass
+
+    # ============= Optional Methods (Can Override) =============
+
+    async def close_position(self, symbol: str) -> OrderResponse:
+        """
+        Close entire position (default implementation using market order)
+
+        Args:
+            symbol: Trading pair symbol
+
+        Returns:
+            OrderResponse with close order details
+
+        Raises:
+            ValueError: If no position found
+        """
+        position = await self.get_position(symbol)
+        if not position or position.size == 0:
+            raise ValueError(f"No position found for {symbol}")
+
+        # Determine order side (opposite of position)
+        side = OrderSide.SELL if position.size > 0 else OrderSide.BUY
+
+        order = OrderRequest(
+            symbol=symbol,
+            side=side,
+            order_type=OrderType.MARKET,
+            quantity=abs(position.size)
+        )
+
+        return await self.place_order(order)
+
+    async def set_leverage(self, symbol: str, leverage: int) -> bool:
+        """
+        Set leverage for a symbol (exchange-specific, not all support)
+
+        Args:
+            symbol: Trading pair symbol
+            leverage: Leverage multiplier
+
+        Returns:
+            True if successful
+
+        Raises:
+            NotImplementedError: If exchange doesn't support leverage change
+        """
+        raise NotImplementedError(
+            f"{self.exchange_name} does not support changing leverage"
+        )
+
+    async def health_check(self) -> bool:
+        """
+        Check if exchange API is accessible
+
+        Returns:
+            True if API is accessible, False otherwise
+        """
+        try:
+            await self.get_balance()
+            return True
+        except Exception:
+            return False
+
+    def __str__(self) -> str:
+        """String representation"""
+        return f"{self.exchange_name}(testnet={self.testnet})"
+
+    def __repr__(self) -> str:
+        """Debug representation"""
+        return f"<{self.exchange_name} testnet={self.testnet}>"

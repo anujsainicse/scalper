@@ -20,8 +20,6 @@ class OrderSide(str, enum.Enum):
 class Exchange(str, enum.Enum):
     COINDCX_F = "CoinDCX F"
     BINANCE = "Binance"
-    BYBIT = "Bybit"
-    DELTA = "Delta"
 
 
 class Bot(Base):

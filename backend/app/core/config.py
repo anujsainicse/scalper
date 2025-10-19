@@ -43,10 +43,6 @@ class Settings(BaseSettings):
     BYBIT_SECRET_KEY: Optional[str] = None
     BYBIT_TESTNET: bool = True
 
-    # CoinDCX API Keys
-    COINDCX_API_KEY: Optional[str] = None
-    COINDCX_SECRET: Optional[str] = None
-
     # WebSocket Settings
     WS_HEARTBEAT_INTERVAL: int = 30
 

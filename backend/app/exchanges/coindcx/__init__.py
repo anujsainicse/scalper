@@ -1,5 +1,5 @@
 """
-CoinDCX Futures Exchange Adapter
+CoinDCX Futures exchange integration
 """
 
 from app.exchanges.coindcx.adapter import CoinDCXAdapter
