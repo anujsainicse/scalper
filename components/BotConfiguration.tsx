@@ -301,10 +301,18 @@ export const BotConfiguration: React.FC = () => {
             {/* Price Data Display */}
             <div className="flex items-center justify-center min-w-[120px]">
               {loadingPrice ? (
-                <p className="text-sm text-muted-foreground">Loading...</p>
+                <p className="text-sm text-muted-foreground animate-pulse">Loading...</p>
               ) : priceData && priceData.ltp ? (
-                <p className="text-2xl font-bold text-green-500">{priceData.ltp}</p>
-              ) : null}
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">LTP</p>
+                  <p className="text-2xl font-bold text-green-500">{priceData.ltp}</p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">LTP</p>
+                  <p className="text-sm text-yellow-500">N/A</p>
+                </div>
+              )}
             </div>
           </div>
 

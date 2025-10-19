@@ -6,7 +6,7 @@ router = APIRouter()
 
 
 @router.get("/ltp")
-async def get_ltp_data(
+def get_ltp_data(
     exchange: str = Query(..., description="Exchange name (e.g., 'CoinDCX F')"),
     ticker: str = Query(..., description="Trading ticker symbol (e.g., 'ETH/USDT')"),
     redis_client: RedisClient = Depends(get_redis_client)
@@ -45,7 +45,7 @@ async def get_ltp_data(
         redis_key = f"{redis_prefix}:{base_symbol}"
 
         # Fetch data from Redis
-        data = await redis_client.get_price_data(redis_key)
+        data = redis_client.get_price_data(redis_key)
 
         if not data:
             return {
