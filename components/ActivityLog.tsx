@@ -126,16 +126,17 @@ export const ActivityLog: React.FC = () => {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto" ref={logContainerRef}>
+      <CardContent className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-zinc-950 to-black" ref={logContainerRef}>
         {filteredLogs.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
+          <div className="flex items-center justify-center h-full text-zinc-500">
             <div className="text-center">
-              <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No activity logs</p>
+              <FileText className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <p className="text-lg font-semibold">No activity logs</p>
+              <p className="text-sm mt-2">Logs will appear here as actions occur</p>
             </div>
           </div>
         ) : (
-          <div className="space-y-1 font-mono text-sm">
+          <div className="space-y-2 font-mono text-sm">
             {filteredLogs.map((log) => (
               <LogEntry key={log.id} log={log} />
             ))}
@@ -161,38 +162,38 @@ const LogEntry: React.FC<LogEntryProps> = ({ log }) => {
     INFO: 'text-blue-400',
     SUCCESS: 'text-green-400',
     WARNING: 'text-yellow-400',
-    ERROR: 'text-destructive',
+    ERROR: 'text-red-400',
     TELEGRAM: 'text-purple-400',
   };
 
   const levelBgColors: Record<LogLevel, string> = {
-    INFO: 'bg-blue-500/10',
-    SUCCESS: 'bg-green-500/10',
-    WARNING: 'bg-yellow-500/10',
-    ERROR: 'bg-destructive/10',
-    TELEGRAM: 'bg-purple-500/10',
+    INFO: 'bg-blue-500/10 border-blue-500/20',
+    SUCCESS: 'bg-green-500/10 border-green-500/20',
+    WARNING: 'bg-yellow-500/10 border-yellow-500/20',
+    ERROR: 'bg-red-500/10 border-red-500/20',
+    TELEGRAM: 'bg-purple-500/10 border-purple-500/20',
   };
 
   return (
     <div
       className={cn(
-        'px-3 py-2 rounded hover:bg-opacity-20 transition-colors',
+        'px-4 py-3 rounded-xl border transition-all duration-200 hover:scale-[1.01]',
         levelBgColors[log.level]
       )}
     >
       <div className="flex items-start gap-3">
-        <span className="text-muted-foreground whitespace-nowrap">
+        <span className="text-zinc-500 whitespace-nowrap text-xs font-semibold">
           {formatTime(log.timestamp)}
         </span>
         <span
           className={cn(
             levelColors[log.level],
-            'font-semibold uppercase min-w-[70px] whitespace-nowrap'
+            'font-bold uppercase min-w-[80px] whitespace-nowrap text-xs'
           )}
         >
           {log.level}
         </span>
-        <span className="text-foreground flex-1">{log.message}</span>
+        <span className="text-zinc-200 flex-1 text-sm">{log.message}</span>
       </div>
     </div>
   );

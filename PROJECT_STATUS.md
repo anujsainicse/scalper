@@ -453,6 +453,85 @@ response = await exchange.place_order(order)
 
 **Result:** Stop button now properly cancels pending orders on the exchange. Activity logs confirm: "Bot stopped and N pending order(s) cancelled"
 
+#### 7.6 Modern Dark Theme UI Redesign
+**Date:** 2025-10-19
+
+**Overview:** Complete frontend redesign with modern dark theme, premium aesthetics, and improved user experience across all components.
+
+**Design Principles:**
+- Dark zinc-based color palette (zinc-900, zinc-950, black)
+- Gradient backgrounds for depth and visual hierarchy
+- Rounded corners (rounded-xl, rounded-2xl) for modern feel
+- Shadow effects for 3D layering
+- Smooth transitions (300ms duration)
+- Color-coded information (green for buy, red for sell, blue/purple accents)
+- Bold, large typography for better readability
+
+**Components Updated:**
+
+1. **Bot Cards** (`components/ActiveBots.tsx`)
+   - Dark gradient background (from-zinc-900 to-zinc-950)
+   - Enhanced header with larger fonts (3xl for ticker)
+   - Prominent status badges with custom colors (green for ACTIVE, amber for STOPPED)
+   - Live price zone visualization:
+     - Gradient bar: green (BUY ZONE) → yellow → red (SELL ZONE)
+     - White marker showing current price position
+     - Live price displayed in center
+   - Large, color-coded buy/sell prices (3xl font)
+   - Enhanced action buttons (h-14) with green shadow on Start button
+   - Interactive infinite loop toggle with smooth animations
+   - Reduced spacing on delete button icon (mr-1)
+   - Hover effects with border color transitions
+
+2. **Activity Log** (`components/ActivityLog.tsx`)
+   - Enhanced log entries with bordered cards (rounded-xl)
+   - Color-coded backgrounds for each log level:
+     - INFO: blue-500/10 with blue-500/20 border
+     - SUCCESS: green-500/10 with green-500/20 border
+     - WARNING: yellow-500/10 with yellow-500/20 border
+     - ERROR: red-500/10 with red-500/20 border
+     - TELEGRAM: purple-500/10 with purple-500/20 border
+   - Subtle hover scale effect (hover:scale-[1.01])
+   - Dark gradient container (from-zinc-950 to-black)
+   - Improved spacing between log entries (space-y-2)
+   - Enhanced empty state with larger icon and descriptive text
+
+3. **Page Header** (`app/page.tsx`)
+   - Beautiful gradient title (from-green-400 via-blue-400 to-purple-400)
+   - Dark card background with rounded-2xl corners
+   - Large heading (text-4xl to text-5xl)
+   - Updated branding: "⚡ Scalper Bot"
+   - Shadow effect (shadow-2xl) for depth
+   - Improved subtitle styling (text-zinc-400)
+
+4. **Bottom Tab Buttons** (`app/page.tsx`)
+   - Gradient buttons when active:
+     - Activity Logs: blue-600 to blue-500 with shadow-blue-500/30
+     - Orders: purple-600 to purple-500 with shadow-purple-500/30
+   - Larger buttons (h-12) with better padding (px-6)
+   - Smooth transitions (duration-300)
+   - Dark zinc background (bg-zinc-900) when inactive
+   - Rounded container for tab content with border
+
+**User Experience Improvements:**
+- Infinite loop toggle is now fully functional
+- Better visual feedback on all interactive elements
+- Consistent spacing and padding throughout
+- Improved color contrast for better accessibility
+- Professional, premium feel across the entire application
+
+**Files Modified:**
+- `components/ActiveBots.tsx` - Complete bot card redesign
+- `components/ActivityLog.tsx` - Enhanced log entries with borders and colors
+- `app/page.tsx` - Redesigned header and tab buttons
+
+**Visual Impact:**
+- Cohesive design language across all components
+- Modern, professional dark theme
+- Enhanced visual hierarchy
+- Better information density
+- Premium feel with gradients and shadows
+
 ---
 
 ## 🔧 Technical Stack Details

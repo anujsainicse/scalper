@@ -199,106 +199,230 @@ interface BotCardProps {
 }
 
 const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDeleting }) => {
+  const [livePrice, setLivePrice] = React.useState<number | null>(null);
+  const [priceChange, setPriceChange] = React.useState<number>(0);
+  const updateBot = useBotStore((state) => state.updateBot);
+  const fetchBots = useBotStore((state) => state.fetchBots);
   const pnlFormatted = formatPnL(bot.pnl);
   const isActive = bot.status === 'ACTIVE';
 
+  const handleToggleInfiniteLoop = async () => {
+    const newValue = !bot.infiniteLoop;
+
+    try {
+      // Optimistically update UI
+      updateBot(bot.id, { infiniteLoop: newValue });
+
+      // Call API to persist change
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/bots/${bot.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ticker: bot.ticker,
+          exchange: bot.exchange,
+          first_order: bot.firstOrder,
+          quantity: bot.quantity,
+          buy_price: bot.buyPrice,
+          sell_price: bot.sellPrice,
+          trailing_percent: bot.trailingPercent || null,
+          infinite_loop: newValue,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update bot');
+      }
+
+      // Refresh bots from server to ensure sync
+      await fetchBots();
+
+      toast.success(`♾️ Infinite loop ${newValue ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      // Revert on error
+      updateBot(bot.id, { infiniteLoop: bot.infiniteLoop });
+      toast.error('❌ Failed to toggle infinite loop');
+    }
+  };
+
+  // Fetch live price (mock for now - will integrate with Redis later)
+  React.useEffect(() => {
+    // Calculate midpoint between buy and sell as current price
+    const midPrice = (bot.buyPrice + bot.sellPrice) / 2;
+    setLivePrice(midPrice);
+
+    // Mock price change calculation
+    const change = ((midPrice - bot.buyPrice) / bot.buyPrice) * 100;
+    setPriceChange(change);
+  }, [bot.buyPrice, bot.sellPrice]);
+
+  // Calculate position of current price on the gradient bar (0-100%)
+  const pricePosition = livePrice
+    ? Math.max(0, Math.min(100, ((livePrice - bot.buyPrice) / (bot.sellPrice - bot.buyPrice)) * 100))
+    : 50;
+
   return (
-    <div className="bg-card border rounded-lg p-4 hover:border-muted-foreground/50 transition-colors">
+    <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 transition-all duration-300 shadow-xl">
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-lg font-semibold">{bot.ticker}</h3>
-            <Badge variant={isActive ? 'default' : 'secondary'} className={isActive ? 'bg-green-600' : ''}>
-              {bot.status}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">{bot.exchange}</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h3 className="text-3xl font-bold text-white mb-1">{bot.ticker}</h3>
+          <p className="text-sm text-zinc-400">{bot.exchange}</p>
         </div>
         <div className="text-right">
-          <div className="flex items-center gap-1 text-lg font-bold">
-            {bot.pnl >= 0 ? (
-              <TrendingUp className="h-4 w-4 text-green-500" />
-            ) : (
-              <TrendingDown className="h-4 w-4 text-destructive" />
-            )}
-            <span className={pnlFormatted.color}>{pnlFormatted.text}</span>
+          <Badge
+            variant="secondary"
+            className={`mb-2 px-3 py-1 text-xs font-bold ${
+              isActive
+                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+            }`}
+          >
+            {bot.status}
+          </Badge>
+          <div className={`text-2xl font-bold ${bot.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {pnlFormatted.text}
           </div>
-          <p className="text-xs text-muted-foreground">{bot.totalTrades} trades</p>
+          <p className="text-xs text-zinc-500 mt-1">{bot.totalTrades} trades</p>
         </div>
       </div>
 
-      {/* Details */}
-      <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-        <div>
-          <p className="text-muted-foreground">Buy Price</p>
-          <p className="font-medium">{bot.buyPrice.toFixed(2)}</p>
+      {/* Price Zone Gradient Bar */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-6">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-zinc-500">
+            <span className="text-green-400 font-semibold">BUY ZONE</span>
+            <span className="text-zinc-400 font-mono text-base font-bold">{livePrice?.toFixed(2) || '---'}</span>
+            <span className="text-red-400 font-semibold">SELL ZONE</span>
+          </div>
+          <div className="relative h-2 rounded-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 shadow-lg">
+            {/* Current price marker */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-300"
+              style={{ left: `${pricePosition}%` }}
+            >
+              <div className="w-1 h-6 bg-white rounded-full shadow-lg" />
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Buy/Sell Prices */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <p className="text-muted-foreground">Sell Price</p>
-          <p className="font-medium">{bot.sellPrice.toFixed(2)}</p>
+          <p className="text-sm text-zinc-500 mb-1">Buy Price</p>
+          <p className="text-3xl font-bold text-green-400">{bot.buyPrice.toFixed(2)}</p>
         </div>
-        <div>
-          <p className="text-muted-foreground">Quantity</p>
-          <p className="font-medium">{bot.quantity}</p>
+        <div className="text-right">
+          <p className="text-sm text-zinc-500 mb-1">Sell Price</p>
+          <p className="text-3xl font-bold text-red-400">{bot.sellPrice.toFixed(2)}</p>
         </div>
+      </div>
+
+      {/* Quantity & Last Fill */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <p className="text-muted-foreground">Last Fill</p>
-          <p className="font-medium">
+          <p className="text-sm text-zinc-500 mb-1">Quantity</p>
+          <p className="text-xl font-semibold text-white">{bot.quantity}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-zinc-500 mb-1">Last Fill</p>
+          <p className="text-xl font-semibold text-white">
             {bot.lastFillTime ? formatRelativeTime(bot.lastFillTime) : 'Never'}
           </p>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2">
+      {/* Action Buttons */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
         <Button
-          variant={isActive ? 'secondary' : 'default'}
-          size="sm"
           onClick={onToggle}
-          className={isActive ? '' : 'bg-green-600 hover:bg-green-700'}
+          className={`h-14 text-base font-semibold transition-all duration-300 ${
+            isActive
+              ? 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700'
+              : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
+          }`}
         >
           {isActive ? (
             <>
-              <Square className="mr-2 h-4 w-4" />
+              <Square className="mr-2 h-5 w-5" />
               Stop
             </>
           ) : (
             <>
-              <Play className="mr-2 h-4 w-4" />
+              <Play className="mr-2 h-5 w-5" />
               Start
             </>
           )}
         </Button>
         <Button
-          variant="outline"
-          size="sm"
           onClick={onEdit}
+          variant="outline"
+          className="h-14 text-base font-semibold bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-300"
         >
-          <Edit className="mr-2 h-4 w-4" />
+          <Edit className="mr-2 h-5 w-5" />
           Edit
         </Button>
         <Button
-          variant={isDeleting ? 'destructive' : 'outline'}
-          size="sm"
           onClick={onDelete}
+          variant="outline"
+          className={`h-14 text-base font-semibold transition-all ${
+            isDeleting
+              ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
+              : 'bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-300'
+          }`}
         >
-          <Trash2 className="mr-2 h-4 w-4" />
+          <Trash2 className="mr-1 h-5 w-5" />
           {isDeleting ? 'Confirm?' : 'Delete'}
         </Button>
       </div>
 
-      {/* Additional Info */}
-      <div className="mt-2 space-y-1">
-        {bot.trailingPercent && (
-          <div className="text-xs text-muted-foreground">
-            Trailing: {bot.trailingPercent}%
-          </div>
-        )}
-        {bot.infiniteLoop && (
-          <div className="text-xs text-blue-400">∞ Infinite Loop Enabled</div>
-        )}
-      </div>
+      {/* Infinite Loop Toggle */}
+      <button
+        onClick={handleToggleInfiniteLoop}
+        className={`w-full rounded-xl p-4 flex items-center justify-between transition-all duration-300 ${
+          bot.infiniteLoop
+            ? 'bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20'
+            : 'bg-zinc-800/50 border border-zinc-700 hover:bg-zinc-800'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <svg
+            className={`w-5 h-5 ${bot.infiniteLoop ? 'text-blue-400' : 'text-zinc-500'}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          <span className={`text-sm font-semibold ${bot.infiniteLoop ? 'text-blue-400' : 'text-zinc-500'}`}>
+            Infinite Loop {bot.infiniteLoop ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+        <div
+          className={`w-11 h-6 rounded-full relative transition-all duration-300 ${
+            bot.infiniteLoop ? 'bg-blue-500' : 'bg-zinc-700'
+          }`}
+        >
+          <div
+            className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${
+              bot.infiniteLoop ? 'right-1' : 'left-1'
+            }`}
+          />
+        </div>
+      </button>
+
+      {bot.trailingPercent && (
+        <div className="mt-3 text-xs text-zinc-500 text-center">
+          Trailing: {bot.trailingPercent}%
+        </div>
+      )}
     </div>
   );
 };
