@@ -40,7 +40,7 @@ export const BotConfiguration: React.FC = () => {
     buyPrice: 0,
     sellPrice: 0,
     trailingPercent: undefined,
-    infiniteLoop: false,
+    infiniteLoop: true,
   });
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -224,7 +224,7 @@ export const BotConfiguration: React.FC = () => {
         buyPrice: defaultBuyPrice,
         sellPrice: defaultSellPrice,
         trailingPercent: undefined,
-        infiniteLoop: false,
+        infiniteLoop: true,
       });
       setEditingBot(null);
     } catch (error) {
@@ -305,12 +305,12 @@ export const BotConfiguration: React.FC = () => {
               ) : priceData && priceData.ltp ? (
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">LTP</p>
-                  <p className="text-2xl font-bold text-green-500">{priceData.ltp}</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-500">{priceData.ltp}</p>
                 </div>
               ) : (
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">LTP</p>
-                  <p className="text-sm text-yellow-500">N/A</p>
+                  <p className="text-sm text-yellow-600 dark:text-yellow-500">N/A</p>
                 </div>
               )}
             </div>
@@ -325,7 +325,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 10))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -10
                 </Button>
@@ -334,7 +334,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 5))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -5
                 </Button>
@@ -343,7 +343,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 2))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -2
                 </Button>
@@ -352,7 +352,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', Math.max(0, (formData.quantity || 0) - 1))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -1
                 </Button>
@@ -372,7 +372,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 1)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +1
                 </Button>
@@ -381,7 +381,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 2)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +2
                 </Button>
@@ -390,7 +390,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 5)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +5
                 </Button>
@@ -399,7 +399,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('quantity', (formData.quantity || 0) + 10)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +10
                 </Button>
@@ -416,7 +416,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('buyPrice', Math.max(0, (formData.buyPrice || 0) * 0.99))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -1%
                 </Button>
@@ -425,7 +425,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('buyPrice', Math.max(0, (formData.buyPrice || 0) * 0.995))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -0.5%
                 </Button>
@@ -434,7 +434,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('buyPrice', Math.max(0, (formData.buyPrice || 0) * 0.999))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -0.1%
                 </Button>
@@ -454,7 +454,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('buyPrice', (formData.buyPrice || 0) * 1.001)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +0.1%
                 </Button>
@@ -463,7 +463,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('buyPrice', (formData.buyPrice || 0) * 1.005)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +0.5%
                 </Button>
@@ -472,7 +472,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('buyPrice', (formData.buyPrice || 0) * 1.01)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +1%
                 </Button>
@@ -489,7 +489,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('sellPrice', Math.max(0, (formData.sellPrice || 0) * 0.99))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -1%
                 </Button>
@@ -498,7 +498,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('sellPrice', Math.max(0, (formData.sellPrice || 0) * 0.995))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -0.5%
                 </Button>
@@ -507,7 +507,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('sellPrice', Math.max(0, (formData.sellPrice || 0) * 0.999))}
-                  className="px-2 text-red-500 hover:text-red-600"
+                  className="px-2 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-600"
                 >
                   -0.1%
                 </Button>
@@ -527,7 +527,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('sellPrice', (formData.sellPrice || 0) * 1.001)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +0.1%
                 </Button>
@@ -536,7 +536,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('sellPrice', (formData.sellPrice || 0) * 1.005)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +0.5%
                 </Button>
@@ -545,7 +545,7 @@ export const BotConfiguration: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('sellPrice', (formData.sellPrice || 0) * 1.01)}
-                  className="px-2 text-green-500 hover:text-green-600"
+                  className="px-2 text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-600"
                 >
                   +1%
                 </Button>
@@ -616,7 +616,7 @@ export const BotConfiguration: React.FC = () => {
                     buyPrice: 0,
                     sellPrice: 0,
                     trailingPercent: undefined,
-                    infiniteLoop: false,
+                    infiniteLoop: true,
                   });
                 }}
               >

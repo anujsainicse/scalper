@@ -8,6 +8,7 @@ import { Badge } from './ui/badge';
 import { useBotStore } from '@/store/botStore';
 import { formatRelativeTime, formatPnL } from '@/utils/formatters';
 import { ActiveBot } from '@/types/bot';
+import { PriceProximityBar } from './PriceProximityBar';
 import {
   Play,
   Square,
@@ -246,16 +247,47 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
     }
   };
 
-  // Fetch live price (mock for now - will integrate with Redis later)
+  // Fetch live price from Redis with polling
   React.useEffect(() => {
-    // Calculate midpoint between buy and sell as current price
-    const midPrice = (bot.buyPrice + bot.sellPrice) / 2;
-    setLivePrice(midPrice);
+    const fetchLivePrice = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/price/ltp?exchange=${encodeURIComponent(bot.exchange)}&ticker=${encodeURIComponent(bot.ticker)}`
+        );
 
-    // Mock price change calculation
-    const change = ((midPrice - bot.buyPrice) / bot.buyPrice) * 100;
-    setPriceChange(change);
-  }, [bot.buyPrice, bot.sellPrice]);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.ltp) {
+            const currentPrice = Number(data.data.ltp);
+            setLivePrice(currentPrice);
+
+            // Calculate price change
+            const change = ((currentPrice - bot.buyPrice) / bot.buyPrice) * 100;
+            setPriceChange(change);
+          } else {
+            // Fallback to midpoint if no data
+            const midPrice = (bot.buyPrice + bot.sellPrice) / 2;
+            setLivePrice(midPrice);
+            setPriceChange(0);
+          }
+        }
+      } catch (error) {
+        // Fallback to midpoint on error
+        const midPrice = (bot.buyPrice + bot.sellPrice) / 2;
+        setLivePrice(midPrice);
+        setPriceChange(0);
+      }
+    };
+
+    // Fetch immediately
+    fetchLivePrice();
+
+    // Poll every 2 seconds for live updates
+    const interval = setInterval(fetchLivePrice, 2000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, [bot.exchange, bot.ticker, bot.buyPrice, bot.sellPrice]);
 
   // Calculate position of current price on the gradient bar (0-100%)
   const pricePosition = livePrice
@@ -263,72 +295,61 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
     : 50;
 
   return (
-    <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 transition-all duration-300 shadow-xl">
+    <div className="bg-gradient-to-br from-background to-muted dark:from-zinc-900 dark:to-zinc-950 border border-border dark:border-zinc-800 rounded-2xl p-6 hover:border-muted-foreground/50 dark:hover:border-zinc-700 transition-all duration-300 shadow-xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h3 className="text-3xl font-bold text-white mb-1">{bot.ticker}</h3>
-          <p className="text-sm text-zinc-400">{bot.exchange}</p>
+          <h3 className="text-3xl font-bold text-foreground mb-1">{bot.ticker}</h3>
+          <p className="text-sm text-muted-foreground">{bot.exchange}</p>
         </div>
         <div className="text-right">
           <Badge
             variant="secondary"
             className={`mb-2 px-3 py-1 text-xs font-bold ${
               isActive
-                ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                ? 'bg-green-500/20 text-green-400 dark:text-green-400 border-green-500/30'
+                : 'bg-amber-500/20 text-amber-400 dark:text-amber-400 border-amber-500/30'
             }`}
           >
             {bot.status}
           </Badge>
-          <div className={`text-2xl font-bold ${bot.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <div className={`text-2xl font-bold ${bot.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {pnlFormatted.text}
           </div>
-          <p className="text-xs text-zinc-500 mt-1">{bot.totalTrades} trades</p>
+          <p className="text-xs text-muted-foreground mt-1">{bot.totalTrades} trades</p>
         </div>
       </div>
 
-      {/* Price Zone Gradient Bar */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-6">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-zinc-500">
-            <span className="text-green-400 font-semibold">BUY ZONE</span>
-            <span className="text-zinc-400 font-mono text-base font-bold">{livePrice?.toFixed(2) || '---'}</span>
-            <span className="text-red-400 font-semibold">SELL ZONE</span>
-          </div>
-          <div className="relative h-2 rounded-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 shadow-lg">
-            {/* Current price marker */}
-            <div
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-300"
-              style={{ left: `${pricePosition}%` }}
-            >
-              <div className="w-1 h-6 bg-white rounded-full shadow-lg" />
-            </div>
-          </div>
-        </div>
+      {/* Price Proximity Indicator */}
+      <div className="mb-6">
+        <PriceProximityBar
+          buyPrice={bot.buyPrice}
+          sellPrice={bot.sellPrice}
+          currentPrice={livePrice || (bot.buyPrice + bot.sellPrice) / 2}
+        />
       </div>
 
       {/* Buy/Sell Prices */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <p className="text-sm text-zinc-500 mb-1">Buy Price</p>
-          <p className="text-3xl font-bold text-green-400">{bot.buyPrice.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground mb-1">Buy Price</p>
+          <p className="text-3xl font-bold text-green-600 dark:text-green-400">{bot.buyPrice.toFixed(2)}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-zinc-500 mb-1">Sell Price</p>
-          <p className="text-3xl font-bold text-red-400">{bot.sellPrice.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground mb-1">Sell Price</p>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">{bot.sellPrice.toFixed(2)}</p>
         </div>
       </div>
 
       {/* Quantity & Last Fill */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <p className="text-sm text-zinc-500 mb-1">Quantity</p>
-          <p className="text-xl font-semibold text-white">{bot.quantity}</p>
+          <p className="text-sm text-muted-foreground mb-1">Quantity</p>
+          <p className="text-xl font-semibold text-foreground">{bot.quantity}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-zinc-500 mb-1">Last Fill</p>
-          <p className="text-xl font-semibold text-white">
+          <p className="text-sm text-muted-foreground mb-1">Last Fill</p>
+          <p className="text-xl font-semibold text-foreground">
             {bot.lastFillTime ? formatRelativeTime(bot.lastFillTime) : 'Never'}
           </p>
         </div>
@@ -340,7 +361,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
           onClick={onToggle}
           className={`h-14 text-base font-semibold transition-all duration-300 ${
             isActive
-              ? 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700'
+              ? 'bg-muted dark:bg-zinc-800 hover:bg-muted/80 dark:hover:bg-zinc-700 text-foreground dark:text-white border border-border dark:border-zinc-700'
               : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
           }`}
         >
@@ -359,7 +380,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         <Button
           onClick={onEdit}
           variant="outline"
-          className="h-14 text-base font-semibold bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-300"
+          className="h-14 text-base font-semibold bg-muted dark:bg-zinc-900 border-border dark:border-zinc-700 hover:bg-muted/80 dark:hover:bg-zinc-800 text-muted-foreground dark:text-zinc-300"
         >
           <Edit className="mr-2 h-5 w-5" />
           Edit
@@ -370,11 +391,11 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
           className={`h-14 text-base font-semibold transition-all ${
             isDeleting
               ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
-              : 'bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-300'
+              : 'bg-muted dark:bg-zinc-900 border-border dark:border-zinc-700 hover:bg-muted/80 dark:hover:bg-zinc-800 text-muted-foreground dark:text-zinc-300'
           }`}
         >
           <Trash2 className="mr-1 h-5 w-5" />
-          {isDeleting ? 'Confirm?' : 'Delete'}
+          {isDeleting ? 'Yes' : 'Delete'}
         </Button>
       </div>
 
@@ -384,12 +405,12 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         className={`w-full rounded-xl p-4 flex items-center justify-between transition-all duration-300 ${
           bot.infiniteLoop
             ? 'bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20'
-            : 'bg-zinc-800/50 border border-zinc-700 hover:bg-zinc-800'
+            : 'bg-muted/50 dark:bg-zinc-800/50 border border-border dark:border-zinc-700 hover:bg-muted dark:hover:bg-zinc-800'
         }`}
       >
         <div className="flex items-center gap-2">
           <svg
-            className={`w-5 h-5 ${bot.infiniteLoop ? 'text-blue-400' : 'text-zinc-500'}`}
+            className={`w-5 h-5 ${bot.infiniteLoop ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground dark:text-zinc-500'}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -401,13 +422,13 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
             />
           </svg>
-          <span className={`text-sm font-semibold ${bot.infiniteLoop ? 'text-blue-400' : 'text-zinc-500'}`}>
+          <span className={`text-sm font-semibold ${bot.infiniteLoop ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground dark:text-zinc-500'}`}>
             Infinite Loop {bot.infiniteLoop ? 'Enabled' : 'Disabled'}
           </span>
         </div>
         <div
           className={`w-11 h-6 rounded-full relative transition-all duration-300 ${
-            bot.infiniteLoop ? 'bg-blue-500' : 'bg-zinc-700'
+            bot.infiniteLoop ? 'bg-blue-500' : 'bg-muted dark:bg-zinc-700'
           }`}
         >
           <div
@@ -419,7 +440,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
       </button>
 
       {bot.trailingPercent && (
-        <div className="mt-3 text-xs text-zinc-500 text-center">
+        <div className="mt-3 text-xs text-muted-foreground text-center">
           Trailing: {bot.trailingPercent}%
         </div>
       )}
