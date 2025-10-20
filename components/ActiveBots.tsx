@@ -114,7 +114,7 @@ export const ActiveBots: React.FC = () => {
               }`}
             >
               Active Bots
-              <Badge variant="secondary" className="ml-2 bg-green-600/20 text-green-400">
+              <Badge variant="secondary" className="ml-2 bg-green-600/10 text-green-600 dark:bg-green-600/20 dark:text-green-400">
                 {activeBots.length}
               </Badge>
               {activeFilter === 'active' && (

@@ -667,7 +667,7 @@ export const BotConfiguration: React.FC = () => {
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700">
+            <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500 text-white">
               <Rocket className="mr-2 h-4 w-4" />
               {editingBotId ? 'Update Bot' : 'Start Bot'}
             </Button>
