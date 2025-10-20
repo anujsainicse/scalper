@@ -36,6 +36,7 @@ class Bot(Base):
     buy_price = Column(Float, nullable=False)
     sell_price = Column(Float, nullable=False)
     trailing_percent = Column(Float, nullable=True)
+    leverage = Column(Integer, default=3)
     infinite_loop = Column(Boolean, default=False)
 
     # Bot Status

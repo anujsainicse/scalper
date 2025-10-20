@@ -19,6 +19,7 @@ export interface BotConfig {
   buyPrice: number;
   sellPrice: number;
   trailingPercent?: number;
+  leverage?: number;
   infiniteLoop: boolean;
   status: BotStatus;
   createdAt: Date;
@@ -48,6 +49,7 @@ export interface BotFormData {
   buyPrice: number;
   sellPrice: number;
   trailingPercent?: number;
+  leverage?: number;
   infiniteLoop: boolean;
 }
 

@@ -16,11 +16,11 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Checkbox } from './ui/checkbox';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
-import { Rocket, AlertCircle } from 'lucide-react';
+import { Rocket, AlertCircle, RotateCcw } from 'lucide-react';
 import { useBotStore } from '@/store/botStore';
 import { Exchange, OrderSide, BotFormData } from '@/types/bot';
 import { validateTicker } from '@/utils/formatters';
-import { EXCHANGES, TRAILING_PERCENTAGES, POPULAR_TICKERS } from '@/config/bot-config';
+import { EXCHANGES, TRAILING_PERCENTAGES, LEVERAGE_OPTIONS, POPULAR_TICKERS } from '@/config/bot-config';
 import { api } from '@/lib/api';
 
 export const BotConfiguration: React.FC = () => {
@@ -40,6 +40,7 @@ export const BotConfiguration: React.FC = () => {
     buyPrice: 0,
     sellPrice: 0,
     trailingPercent: undefined,
+    leverage: 3,
     infiniteLoop: true,
   });
 
@@ -62,6 +63,7 @@ export const BotConfiguration: React.FC = () => {
           buyPrice: bot.buyPrice,
           sellPrice: bot.sellPrice,
           trailingPercent: bot.trailingPercent,
+          leverage: bot.leverage || 3,
           infiniteLoop: bot.infiniteLoop,
         });
       }
@@ -83,43 +85,47 @@ export const BotConfiguration: React.FC = () => {
     return Math.round(value * multiplier) / multiplier;
   };
 
+  // Fetch price data function (extracted for reuse)
+  const fetchPriceData = async (ticker?: string, exchange?: Exchange) => {
+    const targetTicker = ticker || formData.ticker;
+    const targetExchange = exchange || formData.exchange;
+
+    if (!targetTicker || !targetExchange) return;
+
+    setLoadingPrice(true);
+    try {
+      const response = await api.getLTPData(targetExchange, targetTicker);
+      if (response.success && response.data) {
+        setPriceData(response.data);
+        // Calculate decimal places from LTP
+        if (response.data.ltp) {
+          const ltpDecimalPlaces = getDecimalPlaces(response.data.ltp);
+          setDecimalPlaces(ltpDecimalPlaces);
+
+          // Set buy price 2% below LTP and sell price 2% above LTP
+          const currentPrice = Number(response.data.ltp);
+          const buyPrice = roundToDecimalPlaces(currentPrice * 0.98, ltpDecimalPlaces);
+          const sellPrice = roundToDecimalPlaces(currentPrice * 1.02, ltpDecimalPlaces);
+
+          setFormData((prev) => ({
+            ...prev,
+            buyPrice,
+            sellPrice,
+          }));
+        }
+      } else {
+        setPriceData(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch price data:', error);
+      setPriceData(null);
+    } finally {
+      setLoadingPrice(false);
+    }
+  };
+
   // Fetch price data when ticker or exchange changes
   useEffect(() => {
-    const fetchPriceData = async () => {
-      if (!formData.ticker || !formData.exchange) return;
-
-      setLoadingPrice(true);
-      try {
-        const response = await api.getLTPData(formData.exchange, formData.ticker);
-        if (response.success && response.data) {
-          setPriceData(response.data);
-          // Calculate decimal places from LTP
-          if (response.data.ltp) {
-            const ltpDecimalPlaces = getDecimalPlaces(response.data.ltp);
-            setDecimalPlaces(ltpDecimalPlaces);
-
-            // Set buy price 2% below LTP and sell price 2% above LTP
-            const currentPrice = Number(response.data.ltp);
-            const buyPrice = roundToDecimalPlaces(currentPrice * 0.98, ltpDecimalPlaces);
-            const sellPrice = roundToDecimalPlaces(currentPrice * 1.02, ltpDecimalPlaces);
-
-            setFormData((prev) => ({
-              ...prev,
-              buyPrice,
-              sellPrice,
-            }));
-          }
-        } else {
-          setPriceData(null);
-        }
-      } catch (error) {
-        console.error('Failed to fetch price data:', error);
-        setPriceData(null);
-      } finally {
-        setLoadingPrice(false);
-      }
-    };
-
     fetchPriceData();
   }, [formData.ticker, formData.exchange]);
 
@@ -224,6 +230,7 @@ export const BotConfiguration: React.FC = () => {
         buyPrice: defaultBuyPrice,
         sellPrice: defaultSellPrice,
         trailingPercent: undefined,
+        leverage: 3,
         infiniteLoop: true,
       });
       setEditingBot(null);
@@ -234,10 +241,52 @@ export const BotConfiguration: React.FC = () => {
     }
   };
 
+  const handleReset = async () => {
+    const defaultTicker = POPULAR_TICKERS[0] || '';
+    const defaultExchange: Exchange = 'CoinDCX F';
+
+    // Reset to default values first
+    setFormData({
+      ticker: defaultTicker,
+      exchange: defaultExchange,
+      firstOrder: 'BUY',
+      quantity: 1,
+      customQuantity: undefined,
+      buyPrice: 0,
+      sellPrice: 0,
+      trailingPercent: undefined,
+      leverage: 3,
+      infiniteLoop: true,
+    });
+
+    // Clear editing mode
+    setEditingBot(null);
+
+    // Clear validation errors
+    setValidationErrors([]);
+
+    // Fetch fresh LTP data for the default ticker and exchange
+    // This will automatically update buyPrice and sellPrice via the fetchPriceData function
+    await fetchPriceData(defaultTicker, defaultExchange);
+
+    toast.success('✅ Form reset to defaults');
+  };
+
   return (
     <Card className="h-full">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle>Bot Configuration</CardTitle>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleReset}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-500 dark:hover:text-red-400 dark:hover:bg-red-950"
+          title="Reset to default values"
+        >
+          <RotateCcw className="h-4 w-4" />
+          <span className="ml-1 text-sm font-medium">reset</span>
+        </Button>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -553,23 +602,44 @@ export const BotConfiguration: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="trailing">Trailing % (Optional)</Label>
-            <Select
-              value={formData.trailingPercent?.toString() || 'none'}
-              onValueChange={(value) => handleInputChange('trailingPercent', value === 'none' ? undefined : Number(value))}
-            >
-              <SelectTrigger id="trailing">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRAILING_PERCENTAGES.map((trail) => (
-                  <SelectItem key={trail.value.toString()} value={trail.value.toString()}>
-                    {trail.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="trailing">Trailing % (Optional)</Label>
+              <Select
+                value={formData.trailingPercent?.toString() || 'none'}
+                onValueChange={(value) => handleInputChange('trailingPercent', value === 'none' ? undefined : Number(value))}
+              >
+                <SelectTrigger id="trailing">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRAILING_PERCENTAGES.map((trail) => (
+                    <SelectItem key={trail.value.toString()} value={trail.value.toString()}>
+                      {trail.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="leverage">Leverage</Label>
+              <Select
+                value={formData.leverage?.toString() || '3'}
+                onValueChange={(value) => handleInputChange('leverage', Number(value))}
+              >
+                <SelectTrigger id="leverage">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEVERAGE_OPTIONS.map((lev) => (
+                    <SelectItem key={lev.value.toString()} value={lev.value.toString()}>
+                      {lev.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -616,6 +686,7 @@ export const BotConfiguration: React.FC = () => {
                     buyPrice: 0,
                     sellPrice: 0,
                     trailingPercent: undefined,
+                    leverage: 3,
                     infiniteLoop: true,
                   });
                 }}

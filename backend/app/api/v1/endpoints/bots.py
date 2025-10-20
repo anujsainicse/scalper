@@ -97,6 +97,7 @@ async def create_bot(
         buy_price=bot_data.buy_price,
         sell_price=bot_data.sell_price,
         trailing_percent=bot_data.trailing_percent,
+        leverage=bot_data.leverage if bot_data.leverage else 3,
         infinite_loop=bot_data.infinite_loop,
         status=BotStatus.ACTIVE,
     )
@@ -107,6 +108,10 @@ async def create_bot(
     try:
         # Get exchange adapter
         exchange = get_exchange_for_bot(bot)
+
+        # Use the leverage from bot configuration
+        leverage = bot.leverage if bot.leverage else 3
+        logger.info(f"Using leverage {leverage}x from bot configuration for {bot.ticker}")
 
         # Determine order side and price based on first_order
         order_side = OrderSide.BUY if bot.first_order == BotOrderSide.BUY else OrderSide.SELL
@@ -119,11 +124,14 @@ async def create_bot(
             order_type=OrderType.LIMIT,
             quantity=float(bot.quantity),
             price=float(order_price),
-            leverage=1,
+            leverage=leverage,  # Use existing position leverage or default 3x
             time_in_force="GTC"
         )
 
-        logger.info(f"Placing {order_side.value} order for new bot {bot.id}: {bot.ticker} @ {order_price}")
+        logger.info(
+            f"Placing {order_side.value} order for new bot {bot.id}: {bot.ticker} @ {order_price} "
+            f"with {leverage}x leverage"
+        )
 
         # Place order on exchange
         order_response = await exchange.place_order(order_request)
@@ -321,6 +329,20 @@ async def start_bot(
         # Get exchange adapter
         exchange = get_exchange_for_bot(bot)
 
+        # Check for existing position and use its leverage
+        # This is CRITICAL for CoinDCX Futures - leverage is locked per position
+        existing_position = await exchange.get_position(bot.ticker)
+        if existing_position and existing_position.size != 0:
+            leverage = int(existing_position.leverage)
+            logger.info(
+                f"Found existing position for {bot.ticker} with leverage {leverage}x. "
+                f"Using same leverage for new order."
+            )
+        else:
+            # Use the bot's configured leverage or default to 3x
+            leverage = bot.leverage if bot.leverage else 3
+            logger.info(f"No existing position for {bot.ticker}. Using bot's configured leverage {leverage}x")
+
         # Determine order side and price based on first_order
         order_side = OrderSide.BUY if bot.first_order == BotOrderSide.BUY else OrderSide.SELL
         order_price = bot.buy_price if bot.first_order == BotOrderSide.BUY else bot.sell_price
@@ -332,11 +354,14 @@ async def start_bot(
             order_type=OrderType.LIMIT,
             quantity=float(bot.quantity),
             price=float(order_price),
-            leverage=1,
+            leverage=leverage,  # Use existing position leverage or default
             time_in_force="GTC"
         )
 
-        logger.info(f"Placing {order_side.value} order for bot {bot.id}: {bot.ticker} @ {order_price}")
+        logger.info(
+            f"Placing {order_side.value} order for bot {bot.id}: {bot.ticker} @ {order_price} "
+            f"with {leverage}x leverage"
+        )
 
         # Place order on exchange
         order_response = await exchange.place_order(order_request)

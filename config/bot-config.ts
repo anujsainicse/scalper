@@ -55,6 +55,23 @@ export const TRAILING_PERCENTAGES: ConfigItem[] = [
 ];
 
 /**
+ * Leverage Options
+ * Leverage multipliers for futures trading
+ */
+export const LEVERAGE_OPTIONS: ConfigItem[] = [
+  { value: 1, label: '1x' },
+  { value: 2, label: '2x' },
+  { value: 3, label: '3x' },
+  { value: 5, label: '5x' },
+  { value: 10, label: '10x' },
+  { value: 15, label: '15x' },
+  { value: 20, label: '20x' },
+  // Add more leverage options here:
+  // { value: 25, label: '25x' },
+  // { value: 50, label: '50x' },
+];
+
+/**
  * Popular Trading Tickers
  * Optional: Pre-populate ticker suggestions (can be used for autocomplete)
  */

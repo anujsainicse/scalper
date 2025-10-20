@@ -38,6 +38,7 @@ class BotBase(BaseModel):
     buy_price: float = Field(..., gt=0)
     sell_price: float = Field(..., gt=0)
     trailing_percent: Optional[float] = Field(None, ge=0.1, le=3.0)
+    leverage: Optional[int] = Field(3, ge=1, le=50)
     infinite_loop: bool = False
 
     @validator('sell_price')
@@ -59,6 +60,7 @@ class BotUpdate(BaseModel):
     buy_price: Optional[float] = Field(None, gt=0)
     sell_price: Optional[float] = Field(None, gt=0)
     trailing_percent: Optional[float] = Field(None, ge=0.1, le=3.0)
+    leverage: Optional[int] = Field(None, ge=1, le=50)
     infinite_loop: Optional[bool] = None
     status: Optional[BotStatus] = None
 
