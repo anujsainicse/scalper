@@ -21,13 +21,13 @@ export default function Home() {
     <DataLoader>
       <div className="min-h-screen p-4 md:p-6">
       {/* Header */}
-      <header className="mb-8 bg-gradient-to-br from-background to-muted dark:from-zinc-900 dark:to-zinc-950 border border-border dark:border-zinc-800 rounded-2xl p-6 shadow-2xl">
+      <header className="mb-8 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 dark:from-green-400 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 dark:from-green-400 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
               ⚡ Scalper Bot
             </h1>
-            <p className="text-muted-foreground dark:text-zinc-400 text-lg">
+            <p className="text-slate-600 dark:text-zinc-400 text-lg">
               Configure and manage your cryptocurrency scalping strategies
             </p>
           </div>
@@ -60,8 +60,8 @@ export default function Home() {
             onClick={() => setActiveBottomTab('logs')}
             className={`h-12 px-6 font-semibold transition-all duration-300 ${
               activeBottomTab === 'logs'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/30'
-                : 'bg-muted dark:bg-zinc-900 border-border dark:border-zinc-700 hover:bg-muted/80 dark:hover:bg-zinc-800 text-muted-foreground dark:text-zinc-300'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/30 text-white'
+                : 'bg-slate-100 dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300'
             }`}
           >
             <FileText className="mr-2 h-5 w-5" />
@@ -73,15 +73,15 @@ export default function Home() {
             onClick={() => setActiveBottomTab('orders')}
             className={`h-12 px-6 font-semibold transition-all duration-300 ${
               activeBottomTab === 'orders'
-                ? 'bg-gradient-to-r from-purple-600 to-purple-500 shadow-lg shadow-purple-500/30'
-                : 'bg-muted dark:bg-zinc-900 border-border dark:border-zinc-700 hover:bg-muted/80 dark:hover:bg-zinc-800 text-muted-foreground dark:text-zinc-300'
+                ? 'bg-gradient-to-r from-purple-600 to-purple-500 shadow-lg shadow-purple-500/30 text-white'
+                : 'bg-slate-100 dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300'
             }`}
           >
             <Package className="mr-2 h-5 w-5" />
             Orders
           </Button>
         </div>
-        <div className="h-[calc(100%-60px)] rounded-xl overflow-hidden border border-border dark:border-zinc-800">
+        <div className="h-[calc(100%-60px)] rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-800">
           {activeBottomTab === 'logs' ? <ActivityLog /> : <Orders />}
         </div>
       </div>

@@ -295,7 +295,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
     : 50;
 
   return (
-    <div className="bg-gradient-to-br from-background to-muted dark:from-zinc-900 dark:to-zinc-950 border border-border dark:border-zinc-800 rounded-2xl p-6 hover:border-muted-foreground/50 dark:hover:border-zinc-700 transition-all duration-300 shadow-xl">
+    <div className="bg-gradient-to-br from-white to-slate-50 dark:from-zinc-900 dark:to-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 hover:border-slate-400 dark:hover:border-zinc-700 transition-all duration-300 shadow-lg">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -380,7 +380,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         <Button
           onClick={onEdit}
           variant="outline"
-          className="h-14 text-base font-semibold bg-muted dark:bg-zinc-900 border-border dark:border-zinc-700 hover:bg-muted/80 dark:hover:bg-zinc-800 text-muted-foreground dark:text-zinc-300"
+          className="h-14 text-base font-semibold bg-slate-100 dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300"
         >
           <Edit className="mr-2 h-5 w-5" />
           Edit
