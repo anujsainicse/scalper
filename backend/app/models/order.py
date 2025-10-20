@@ -48,6 +48,9 @@ class Order(Base):
     # Order Status
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False, index=True)
 
+    # Order Pairing (for tracking buy-sell cycles)
+    paired_order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, index=True)
+
     # Execution Details
     filled_quantity = Column(Numeric(20, 8), default=0, nullable=False)
     filled_price = Column(Numeric(20, 8), nullable=True)

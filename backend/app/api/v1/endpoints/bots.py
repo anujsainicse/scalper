@@ -19,6 +19,7 @@ from app.schemas.bot import (
 )
 from app.schemas.order import OrderResponse
 from app.services.telegram import telegram_service
+from app.services.order_service import place_order_for_bot, get_exchange_for_bot as get_exchange_adapter
 from app.exchanges import ExchangeFactory, OrderRequest, OrderSide, OrderType, BaseExchange
 
 router = APIRouter()
@@ -371,61 +372,17 @@ async def start_bot(
         raise HTTPException(status_code=404, detail="Bot not found")
 
     try:
-        # Get exchange adapter
-        exchange = get_exchange_for_bot(bot)
-
-        # Check for existing position and use its leverage
-        # This is CRITICAL for CoinDCX Futures - leverage is locked per position
-        existing_position = await exchange.get_position(bot.ticker)
-        if existing_position and existing_position.size != 0:
-            leverage = int(existing_position.leverage)
-            logger.info(
-                f"Found existing position for {bot.ticker} with leverage {leverage}x. "
-                f"Using same leverage for new order."
-            )
-        else:
-            # Use the bot's configured leverage or default to 3x
-            leverage = bot.leverage if bot.leverage else 3
-            logger.info(f"No existing position for {bot.ticker}. Using bot's configured leverage {leverage}x")
-
         # Determine order side and price based on first_order
-        order_side = OrderSide.BUY if bot.first_order == BotOrderSide.BUY else OrderSide.SELL
+        order_side = bot.first_order
         order_price = bot.buy_price if bot.first_order == BotOrderSide.BUY else bot.sell_price
 
-        # Create order request
-        order_request = OrderRequest(
-            symbol=bot.ticker,  # e.g., "ETH/USDT"
+        # Use the new centralized order service
+        db_order = await place_order_for_bot(
+            bot=bot,
             side=order_side,
-            order_type=OrderType.LIMIT,
-            quantity=float(bot.quantity),
-            price=float(order_price),
-            leverage=leverage,  # Use existing position leverage or default
-            time_in_force="GTC"
-        )
-
-        logger.info(
-            f"Placing {order_side.value} order for bot {bot.id}: {bot.ticker} @ {order_price} "
-            f"with {leverage}x leverage"
-        )
-
-        # Place order on exchange
-        order_response = await exchange.place_order(order_request)
-
-        # Create order record in database
-        db_order = OrderModel(
-            bot_id=bot.id,
-            exchange_order_id=order_response.order_id,
-            symbol=bot.ticker,
-            side=bot.first_order,
-            order_type=DBOrderType.LIMIT,
-            quantity=bot.quantity,
             price=order_price,
-            status=DBOrderStatus.PENDING,
-            filled_quantity=float(order_response.filled_quantity),
-            filled_price=float(order_response.average_price) if order_response.average_price else None,
-            commission=0.0
+            db=db
         )
-        db.add(db_order)
 
         # Set bot status to ACTIVE
         bot.status = BotStatus.ACTIVE
@@ -448,12 +405,12 @@ async def start_bot(
                     f"Ticker: {bot.ticker}\n"
                     f"Exchange: {bot.exchange.value}\n"
                     f"Order: {order_side.value} {bot.quantity} @ ${order_price}\n"
-                    f"Order ID: {order_response.order_id}\n"
+                    f"Order ID: {db_order.exchange_order_id}\n"
                     f"Status: ACTIVE",
             level="SUCCESS"
         )
 
-        logger.info(f"Bot {bot.id} started successfully with order {order_response.order_id}")
+        logger.info(f"Bot {bot.id} started successfully with order {db_order.exchange_order_id}")
         return bot
 
     except ValueError as ve:

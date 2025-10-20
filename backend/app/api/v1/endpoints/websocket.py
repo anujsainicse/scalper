@@ -11,6 +11,8 @@ from datetime import datetime
 import logging
 
 from app.exchanges.coindcx.client import CoinDCXFutures
+from app.db.session import async_session_maker
+from app.services.order_monitor import process_order_fill
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -131,8 +133,60 @@ class ConnectionManager:
             logger.info(f"📦 Order Update: {order_data.get('id')} - {order_data.get('status')}")
             await self.broadcast(event)
 
+            # Check if order is filled - trigger opposite order placement
+            order_status = order_data.get("status", "").lower()
+            if order_status == "filled":
+                filled_qty = float(order_data.get("filled_quantity", 0))
+                total_qty = float(order_data.get("total_quantity", 0))
+
+                # Only process if completely filled
+                if filled_qty >= total_qty and total_qty > 0:
+                    logger.info(
+                        f"🎯 Order {order_data.get('id')} is FILLED. "
+                        f"Processing opposite order placement..."
+                    )
+
+                    # Process the fill in a background task to avoid blocking WebSocket
+                    asyncio.create_task(self._process_filled_order(
+                        exchange_order_id=order_data.get("id"),
+                        filled_quantity=filled_qty,
+                        total_quantity=total_qty,
+                        filled_price=float(order_data.get("avg_price", order_data.get("price", 0)))
+                    ))
+
         except Exception as e:
             logger.error(f"Error handling order update: {e}")
+
+    async def _process_filled_order(
+        self,
+        exchange_order_id: str,
+        filled_quantity: float,
+        total_quantity: float,
+        filled_price: float
+    ):
+        """
+        Process a filled order in a background task
+
+        This runs asynchronously to avoid blocking the WebSocket connection
+        """
+        try:
+            # Create a new database session for this task
+            async with async_session_maker() as db:
+                success = await process_order_fill(
+                    exchange_order_id=exchange_order_id,
+                    filled_quantity=filled_quantity,
+                    total_quantity=total_quantity,
+                    filled_price=filled_price,
+                    db=db
+                )
+
+                if success:
+                    logger.info(f"✅ Successfully processed filled order {exchange_order_id}")
+                else:
+                    logger.warning(f"⚠️ Failed to process filled order {exchange_order_id}")
+
+        except Exception as e:
+            logger.error(f"❌ Error in background task for order {exchange_order_id}: {e}")
 
     async def handle_position_update(self, data: dict):
         """Handle position update from CoinDCX"""
