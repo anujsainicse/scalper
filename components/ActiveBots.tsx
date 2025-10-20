@@ -295,7 +295,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
     : 50;
 
   return (
-    <div className="bg-gradient-to-br from-white to-slate-50 dark:from-zinc-900 dark:to-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 hover:border-slate-400 dark:hover:border-zinc-700 transition-all duration-300 shadow-lg">
+    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 border border-slate-300 dark:border-zinc-800 rounded-2xl p-6 hover:border-slate-400 dark:hover:border-zinc-700 transition-all duration-300 shadow-lg">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
