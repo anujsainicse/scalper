@@ -126,9 +126,9 @@ export const ActivityLog: React.FC = () => {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-zinc-950 to-black" ref={logContainerRef}>
+      <CardContent className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-muted to-background dark:from-zinc-950 dark:to-black" ref={logContainerRef}>
         {filteredLogs.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-zinc-500">
+          <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
               <FileText className="h-16 w-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg font-semibold">No activity logs</p>
@@ -159,19 +159,19 @@ interface LogEntryProps {
 
 const LogEntry: React.FC<LogEntryProps> = ({ log }) => {
   const levelColors: Record<LogLevel, string> = {
-    INFO: 'text-blue-400',
-    SUCCESS: 'text-green-400',
-    WARNING: 'text-yellow-400',
-    ERROR: 'text-red-400',
-    TELEGRAM: 'text-purple-400',
+    INFO: 'text-blue-500 dark:text-blue-400',
+    SUCCESS: 'text-green-500 dark:text-green-400',
+    WARNING: 'text-yellow-500 dark:text-yellow-400',
+    ERROR: 'text-red-500 dark:text-red-400',
+    TELEGRAM: 'text-purple-500 dark:text-purple-400',
   };
 
   const levelBgColors: Record<LogLevel, string> = {
-    INFO: 'bg-blue-500/10 border-blue-500/20',
-    SUCCESS: 'bg-green-500/10 border-green-500/20',
-    WARNING: 'bg-yellow-500/10 border-yellow-500/20',
-    ERROR: 'bg-red-500/10 border-red-500/20',
-    TELEGRAM: 'bg-purple-500/10 border-purple-500/20',
+    INFO: 'bg-blue-500/10 border-blue-500/20 dark:border-blue-500/20',
+    SUCCESS: 'bg-green-500/10 border-green-500/20 dark:border-green-500/20',
+    WARNING: 'bg-yellow-500/10 border-yellow-500/20 dark:border-yellow-500/20',
+    ERROR: 'bg-red-500/10 border-red-500/20 dark:border-red-500/20',
+    TELEGRAM: 'bg-purple-500/10 border-purple-500/20 dark:border-purple-500/20',
   };
 
   return (
@@ -182,7 +182,7 @@ const LogEntry: React.FC<LogEntryProps> = ({ log }) => {
       )}
     >
       <div className="flex items-start gap-3">
-        <span className="text-zinc-500 whitespace-nowrap text-xs font-semibold">
+        <span className="text-muted-foreground dark:text-zinc-500 whitespace-nowrap text-xs font-semibold">
           {formatTime(log.timestamp)}
         </span>
         <span
@@ -193,7 +193,7 @@ const LogEntry: React.FC<LogEntryProps> = ({ log }) => {
         >
           {log.level}
         </span>
-        <span className="text-zinc-200 flex-1 text-sm">{log.message}</span>
+        <span className="text-foreground dark:text-zinc-200 flex-1 text-sm">{log.message}</span>
       </div>
     </div>
   );
