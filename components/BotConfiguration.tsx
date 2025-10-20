@@ -50,6 +50,8 @@ export const BotConfiguration: React.FC = () => {
   const [decimalPlaces, setDecimalPlaces] = useState<number>(2);
 
   // Load bot data when editing
+  // Only reload when editingBotId changes, not when bots array updates (every 5 seconds)
+  // This prevents overwriting user edits during edit mode
   React.useEffect(() => {
     if (editingBotId) {
       const bot = bots.find((b) => b.id === editingBotId);
@@ -68,7 +70,8 @@ export const BotConfiguration: React.FC = () => {
         });
       }
     }
-  }, [editingBotId, bots]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingBotId]);
 
   // Helper function to calculate decimal places from a number
   const getDecimalPlaces = (value: string | number): number => {
@@ -86,7 +89,7 @@ export const BotConfiguration: React.FC = () => {
   };
 
   // Fetch price data function (extracted for reuse)
-  const fetchPriceData = async (ticker?: string, exchange?: Exchange) => {
+  const fetchPriceData = async (ticker?: string, exchange?: Exchange, updatePrices: boolean = true) => {
     const targetTicker = ticker || formData.ticker;
     const targetExchange = exchange || formData.exchange;
 
@@ -102,16 +105,19 @@ export const BotConfiguration: React.FC = () => {
           const ltpDecimalPlaces = getDecimalPlaces(response.data.ltp);
           setDecimalPlaces(ltpDecimalPlaces);
 
-          // Set buy price 2% below LTP and sell price 2% above LTP
-          const currentPrice = Number(response.data.ltp);
-          const buyPrice = roundToDecimalPlaces(currentPrice * 0.98, ltpDecimalPlaces);
-          const sellPrice = roundToDecimalPlaces(currentPrice * 1.02, ltpDecimalPlaces);
+          // Only update buy/sell prices if updatePrices is true (not in editing mode)
+          if (updatePrices) {
+            // Set buy price 2% below LTP and sell price 2% above LTP
+            const currentPrice = Number(response.data.ltp);
+            const buyPrice = roundToDecimalPlaces(currentPrice * 0.98, ltpDecimalPlaces);
+            const sellPrice = roundToDecimalPlaces(currentPrice * 1.02, ltpDecimalPlaces);
 
-          setFormData((prev) => ({
-            ...prev,
-            buyPrice,
-            sellPrice,
-          }));
+            setFormData((prev) => ({
+              ...prev,
+              buyPrice,
+              sellPrice,
+            }));
+          }
         }
       } else {
         setPriceData(null);
@@ -125,9 +131,11 @@ export const BotConfiguration: React.FC = () => {
   };
 
   // Fetch price data when ticker or exchange changes
+  // Don't auto-update prices when editing a bot
   useEffect(() => {
-    fetchPriceData();
-  }, [formData.ticker, formData.exchange]);
+    const shouldUpdatePrices = !editingBotId;
+    fetchPriceData(undefined, undefined, shouldUpdatePrices);
+  }, [formData.ticker, formData.exchange, editingBotId]);
 
   const handleInputChange = (
     field: keyof BotFormData,
@@ -667,7 +675,7 @@ export const BotConfiguration: React.FC = () => {
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500 text-white">
+            <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700">
               <Rocket className="mr-2 h-4 w-4" />
               {editingBotId ? 'Update Bot' : 'Start Bot'}
             </Button>

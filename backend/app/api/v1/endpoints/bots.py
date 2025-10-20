@@ -276,7 +276,7 @@ async def delete_bot(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Delete a bot
+    Delete a bot and cancel all its open orders
     """
     result = await db.execute(select(Bot).where(Bot.id == bot_id))
     bot = result.scalar_one_or_none()
@@ -288,11 +288,55 @@ async def delete_bot(
     ticker = bot.ticker
     exchange = bot.exchange.value
 
+    # Cancel all open orders for this bot
+    cancelled_count = 0
+    try:
+        # Get all pending orders for this bot
+        orders_result = await db.execute(
+            select(OrderModel).where(
+                OrderModel.bot_id == bot_id,
+                OrderModel.status == DBOrderStatus.PENDING
+            )
+        )
+        open_orders = orders_result.scalars().all()
+
+        if open_orders:
+            logger.info(f"Cancelling {len(open_orders)} open orders for bot {bot_id}")
+
+            # Get exchange adapter
+            exchange_adapter = get_exchange_for_bot(bot)
+
+            # Cancel each order
+            for order in open_orders:
+                try:
+                    # Cancel on exchange
+                    success = await exchange_adapter.cancel_order(
+                        order_id=order.exchange_order_id,
+                        symbol=order.symbol
+                    )
+
+                    if success:
+                        # Update order status in database
+                        order.status = DBOrderStatus.CANCELLED
+                        cancelled_count += 1
+                        logger.info(f"Cancelled order {order.exchange_order_id}")
+                    else:
+                        logger.warning(f"Failed to cancel order {order.exchange_order_id}")
+
+                except Exception as e:
+                    logger.error(f"Error cancelling order {order.exchange_order_id}: {e}")
+
+            await db.flush()
+
+    except Exception as e:
+        logger.error(f"Error during order cancellation for bot {bot_id}: {e}")
+
     # Create activity log before deleting
+    cancel_msg = f" ({cancelled_count} orders cancelled)" if cancelled_count > 0 else ""
     log = ActivityLog(
         bot_id=bot.id,
         level="WARNING",
-        message=f"Bot deleted for {bot.ticker}"
+        message=f"Bot deleted for {bot.ticker}{cancel_msg}"
     )
     db.add(log)
 
@@ -300,11 +344,12 @@ async def delete_bot(
     await db.commit()
 
     # Send Telegram notification
+    cancel_text = f"\nCancelled Orders: {cancelled_count}" if cancelled_count > 0 else ""
     await telegram_service.send_notification(
         db=db,
         message=f"*Bot Deleted*\n\n"
                 f"Ticker: {ticker}\n"
-                f"Exchange: {exchange}",
+                f"Exchange: {exchange}{cancel_text}",
         level="WARNING"
     )
 

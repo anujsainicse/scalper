@@ -5,6 +5,47 @@ All notable changes to the Scalper Bot Dashboard project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-10-20
+
+### Added
+
+#### Order Cancellation on Bot Deletion
+- **Automatic Order Cleanup**: When a bot is deleted, all open orders are automatically cancelled on the exchange
+  - Location: `backend/app/api/v1/endpoints/bots.py:273-356`
+  - Functionality:
+    - Fetches all PENDING orders for the bot being deleted
+    - Cancels each order on the exchange using exchange adapter
+    - Updates order status to CANCELLED in database
+    - Tracks count of successfully cancelled orders
+    - Logs activity with cancellation count: "Bot deleted for {ticker} ({N} orders cancelled)"
+    - Includes cancellation count in Telegram notification
+    - Graceful error handling - continues deletion even if cancellation fails
+  - Technical Details:
+    - Uses `get_exchange_for_bot()` to get correct exchange adapter
+    - Calls `exchange.cancel_order(order_id, symbol)` for each pending order
+    - Updates `Order.status = OrderStatus.CANCELLED` in database
+    - Uses `db.flush()` to save order updates before bot deletion
+  - Activity Log Example: "Bot deleted for ETH/USDT (3 orders cancelled)"
+  - Telegram Notification: Shows "Cancelled Orders: 3" when orders are cancelled
+  - Error Logging: Logs warnings/errors for failed cancellations but continues
+
+### Fixed
+
+#### Edit Mode Price Overwrite Issue
+- **Problem**: When editing a bot, price fields were getting reset every 5 seconds due to polling updates
+- **Root Cause**: The `useEffect` in BotConfiguration.tsx depended on both `[editingBotId, bots]` array
+  - DataLoader polls backend every 5 seconds
+  - Polling updates `bots` array in Zustand store
+  - useEffect detects `bots` change and reloads form data
+  - User's price edits get overwritten by bot's saved prices
+- **Solution**: Changed useEffect dependency from `[editingBotId, bots]` to `[editingBotId]` only
+  - Location: `components/BotConfiguration.tsx:55-74`
+  - Now form only reloads when user clicks Edit on a different bot
+  - Form stays stable during 5-second polling updates
+  - Added explanatory comment documenting the fix
+  - Added eslint-disable comment for intentional dependency exclusion
+- **Result**: Users can now freely edit prices without interference from background polling
+
 ## [0.2.0] - 2025-10-20
 
 ### Added

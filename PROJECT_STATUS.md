@@ -1,6 +1,6 @@
 # Scalper Bot - Project Status & Completed Features
 
-**Last Updated:** 2025-10-19
+**Last Updated:** 2025-10-20
 **Project:** Cryptocurrency Scalping Bot Dashboard
 **Stack:** Next.js 15.5.6, React 19, FastAPI, PostgreSQL, Redis
 
@@ -532,6 +532,52 @@ response = await exchange.place_order(order)
 - Better information density
 - Premium feel with gradients and shadows
 
+#### 7.7 Order Cancellation on Bot Deletion
+**Date:** 2025-10-20
+
+**Feature:** Automatic order cleanup when deleting bots
+
+**Implementation:** Modified DELETE endpoint to cancel all pending orders before deleting bot
+
+**Details:**
+- Fetches all PENDING orders for the bot being deleted
+- Uses exchange adapter to cancel each order on the exchange
+- Updates order status to CANCELLED in database
+- Tracks count of successfully cancelled orders
+- Logs activity with cancellation details
+- Includes cancelled order count in Telegram notification
+
+**Error Handling:**
+- Graceful degradation - continues deletion even if order cancellation fails
+- Logs warnings for failed cancellations
+- Comprehensive error logging at each step
+
+**Files Changed:** `backend/app/api/v1/endpoints/bots.py` (lines 273-356)
+
+**Result:** Users can safely delete bots without leaving orphaned orders on the exchange. Activity logs show: "Bot deleted for {ticker} (N orders cancelled)"
+
+#### 7.8 Edit Mode Price Overwrite Fix
+**Date:** 2025-10-20
+
+**Issue:** When editing a bot, buy/sell price inputs were getting reset to saved values every 5 seconds
+
+**Root Cause:**
+- DataLoader component polls backend every 5 seconds
+- Polling updates `bots` array in Zustand store
+- BotConfiguration's useEffect had dependency: `[editingBotId, bots]`
+- Every bots array update triggered useEffect to reload form data
+- User's price edits were overwritten by bot's saved prices from database
+
+**Solution:** Changed useEffect dependency array from `[editingBotId, bots]` to `[editingBotId]` only
+- Form now only reloads when editingBotId changes (user clicks Edit button)
+- Form stays stable during background polling updates
+- Added explanatory comments documenting the fix
+- Added eslint-disable comment for intentional dependency exclusion
+
+**Files Changed:** `components/BotConfiguration.tsx` (lines 55-74)
+
+**Result:** Users can now edit prices freely without interference. Form only reloads when switching to edit a different bot.
+
 ---
 
 ## 🔧 Technical Stack Details
@@ -806,7 +852,15 @@ Repository: https://github.com/anujsainicse/scalper
   - Multiple bug fixes
   - Documentation created
 
-**Total Development Time:** 1 day (intensive session)
+- **2025-10-20:** Phase 1.5 Updates
+  - Order cancellation on bot deletion
+  - Edit mode price overwrite fix
+  - Leverage field implementation
+  - Reset button feature
+  - Light mode theme support
+  - Price proximity indicator with Redis
+
+**Total Development Time:** 2 days (intensive sessions)
 
 ---
 
