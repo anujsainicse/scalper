@@ -161,7 +161,7 @@ export const TelegramConnect: React.FC = () => {
         >
           <Radio className="mr-2 h-4 w-4 text-green-500" />
           <span className="hidden sm:inline">Telegram</span>
-          <Badge variant="secondary" className="ml-2 bg-green-600/10 text-green-600 dark:bg-green-600/20 dark:text-green-400">
+          <Badge variant="secondary" className="ml-2 bg-green-600/20 text-green-400">
             Connected
           </Badge>
         </Button>
@@ -246,7 +246,7 @@ export const TelegramConnect: React.FC = () => {
                 href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'YOUR_BOT'}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 p-3 bg-blue-600/10 hover:bg-blue-600/20 dark:bg-blue-600/20 dark:hover:bg-blue-600/30 rounded-lg transition-colors"
+                className="flex items-center gap-2 p-3 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg transition-colors"
               >
                 <ExternalLink className="h-4 w-4 text-blue-500" />
                 <span className="text-blue-500 font-medium">Open in Telegram</span>

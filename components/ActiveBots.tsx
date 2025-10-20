@@ -114,7 +114,7 @@ export const ActiveBots: React.FC = () => {
               }`}
             >
               Active Bots
-              <Badge variant="secondary" className="ml-2 bg-green-600/10 text-green-600 dark:bg-green-600/20 dark:text-green-400">
+              <Badge variant="secondary" className="ml-2 bg-green-600/20 text-green-400">
                 {activeBots.length}
               </Badge>
               {activeFilter === 'active' && (
@@ -295,7 +295,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
     : 50;
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 border border-slate-300 dark:border-zinc-800 rounded-2xl p-6 hover:border-slate-400 dark:hover:border-zinc-700 transition-all duration-300 shadow-lg">
+    <div className="bg-card border border-border rounded-2xl p-6 hover:border-muted-foreground/50 transition-all duration-300 shadow-xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -307,8 +307,8 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
             variant="secondary"
             className={`mb-2 px-3 py-1 text-xs font-bold ${
               isActive
-                ? 'bg-green-500/20 text-green-400 dark:text-green-400 border-green-500/30'
-                : 'bg-amber-500/20 text-amber-400 dark:text-amber-400 border-amber-500/30'
+                ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 border-green-300 dark:border-green-500/30'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-300 dark:border-amber-500/30'
             }`}
           >
             {bot.status}
@@ -361,7 +361,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
           onClick={onToggle}
           className={`h-14 text-base font-semibold transition-all duration-300 ${
             isActive
-              ? 'bg-muted dark:bg-zinc-800 hover:bg-muted/80 dark:hover:bg-zinc-700 text-foreground dark:text-white border border-border dark:border-zinc-700'
+              ? 'bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white border border-gray-300 dark:border-zinc-700'
               : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
           }`}
         >
@@ -380,7 +380,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         <Button
           onClick={onEdit}
           variant="outline"
-          className="h-14 text-base font-semibold bg-slate-100 dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300"
+          className="h-14 text-base font-semibold bg-gray-100 dark:bg-zinc-900 border-gray-300 dark:border-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300"
         >
           <Edit className="mr-2 h-5 w-5" />
           Edit
@@ -391,7 +391,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
           className={`h-14 text-base font-semibold transition-all ${
             isDeleting
               ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
-              : 'bg-muted dark:bg-zinc-900 border-border dark:border-zinc-700 hover:bg-muted/80 dark:hover:bg-zinc-800 text-muted-foreground dark:text-zinc-300'
+              : 'bg-gray-100 dark:bg-zinc-900 border-gray-300 dark:border-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300'
           }`}
         >
           <Trash2 className="mr-1 h-5 w-5" />
@@ -404,8 +404,8 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         onClick={handleToggleInfiniteLoop}
         className={`w-full rounded-xl p-4 flex items-center justify-between transition-all duration-300 ${
           bot.infiniteLoop
-            ? 'bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20'
-            : 'bg-muted/50 dark:bg-zinc-800/50 border border-border dark:border-zinc-700 hover:bg-muted dark:hover:bg-zinc-800'
+            ? 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20'
+            : 'bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -428,7 +428,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         </div>
         <div
           className={`w-11 h-6 rounded-full relative transition-all duration-300 ${
-            bot.infiniteLoop ? 'bg-blue-500' : 'bg-muted dark:bg-zinc-700'
+            bot.infiniteLoop ? 'bg-blue-500' : 'bg-gray-300 dark:bg-zinc-700'
           }`}
         >
           <div

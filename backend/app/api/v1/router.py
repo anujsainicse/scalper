@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import bots, logs, telegram, price, orders
+from app.api.v1.endpoints import bots, logs, telegram, price, orders, websocket
 
 api_router = APIRouter()
 
@@ -8,3 +8,4 @@ api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
 api_router.include_router(logs.router, prefix="/logs", tags=["activity-logs"])
 api_router.include_router(telegram.router, prefix="/telegram", tags=["telegram"])
 api_router.include_router(price.router, prefix="/price", tags=["price"])
+api_router.include_router(websocket.router, prefix="/ws", tags=["websocket"])

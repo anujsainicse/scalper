@@ -1,6 +1,6 @@
 # Scalper Bot - Project Status & Completed Features
 
-**Last Updated:** 2025-10-20
+**Last Updated:** 2025-10-21
 **Project:** Cryptocurrency Scalping Bot Dashboard
 **Stack:** Next.js 15.5.6, React 19, FastAPI, PostgreSQL, Redis
 
@@ -578,6 +578,83 @@ response = await exchange.place_order(order)
 
 **Result:** Users can now edit prices freely without interference. Form only reloads when switching to edit a different bot.
 
+#### 7.9 Light/Dark Mode Theme Support
+**Date:** 2025-10-21
+
+**Feature:** Complete theme support with proper color schemes for both light and dark modes
+
+**Implementation:**
+- Fixed all components to use theme-aware Tailwind classes
+- Followed shadcn/ui design patterns for consistent theming
+- Updated all color classes to support both modes:
+  - Text: `text-foreground`, `text-muted-foreground`
+  - Backgrounds: `bg-background`, `bg-card`, `bg-muted`
+  - Borders: `border`, `border-border`
+  - Accents: Maintained color-500 with dark: variants where needed
+
+**Components Updated:**
+- `components/ActiveBots.tsx` - Bot cards with theme-aware colors
+- `components/BotConfiguration.tsx` - Form inputs and labels
+- `components/ActivityLog.tsx` - Log entries with proper contrast
+- `components/PriceProximityBar.tsx` - Gradient bar and price display
+- `components/TelegramConnect.tsx` - Button and connection status
+- `app/page.tsx` - Main layout and headers
+- `app/layout.tsx` - Theme provider configuration
+- `app/globals.css` - CSS variables for both themes
+- `tailwind.config.js` - Dark mode configuration (removed, using class strategy)
+
+**Files Modified:**
+- `app/globals.css` (lines 1-80) - Added complete CSS variable definitions
+- `components/ActiveBots.tsx` (multiple sections)
+- `components/BotConfiguration.tsx` (form styling)
+- `components/ActivityLog.tsx` (log entries)
+- `components/PriceProximityBar.tsx` (price indicator)
+- `components/TelegramConnect.tsx` (button styling)
+- `app/page.tsx` (header and layout)
+- `app/layout.tsx` (theme provider setup)
+
+**Result:** Application now properly supports both light and dark modes with consistent, accessible colors and proper contrast ratios across all components.
+
+#### 7.10 WebSocket Monitor Enhancements
+**Date:** 2025-10-21
+
+**Feature 1: Order Cancellation Event Display**
+
+**Issue:** Order cancellation events were not appearing in the WebSocket monitor despite being received by the backend.
+
+**Root Cause:** Event deduplication logic used only order ID as the key, causing all status updates for the same order to be treated as duplicates.
+
+**Solution:** Modified deduplication key to include order status:
+- Changed from: `order-{order_id}`
+- Changed to: `order-{order_id}-{status}`
+- This allows tracking complete order lifecycle: INITIAL → OPEN → CANCELLED
+
+**Feature 2: Compact Log-Style Display Format**
+
+**Implementation:** Redesigned WebSocket event display to match Activity Logs format:
+- Converted from detailed card view to compact horizontal layout
+- Single-line event messages: `timestamp | type | details`
+- Applied monospace font and gradient background
+- Color-coded event types (blue=orders, purple=positions, green=balance)
+- Maintained hover effects and rounded borders
+
+**Event Message Formats:**
+- Orders: `BUY B-ETH_USDT - OPEN | Price: $3800.00 | Qty: 1 | ETH limit buy order placed!`
+- Positions: `Position B-ETH_USDT | Active: 0 | Avg Price: $0.00 | PnL: $0.00`
+- Balances: `Balance INR | Available: $1000.00 | Locked: $500.00 | Total: $1500.00`
+
+**Files Modified:**
+- `components/WebSocketMonitor.tsx` (lines 128-137, 293, 322-377)
+
+**Result:**
+- Complete order lifecycle now visible (INITIAL → OPEN → CANCELLED)
+- WebSocket monitor matches Activity Logs appearance
+- Compact, professional log-style display
+- Each unique order+status combination tracked separately
+- True duplicates still filtered out correctly
+
+**Testing:** Created and cancelled test orders to verify all three status updates appear correctly in the UI.
+
 ---
 
 ## 🔧 Technical Stack Details
@@ -860,7 +937,14 @@ Repository: https://github.com/anujsainicse/scalper
   - Light mode theme support
   - Price proximity indicator with Redis
 
-**Total Development Time:** 2 days (intensive sessions)
+- **2025-10-21:** Theme & WebSocket Improvements
+  - Complete light/dark mode theme support
+  - Fixed all components to use theme-aware colors
+  - WebSocket order cancellation event display
+  - WebSocket compact log-style format
+  - Event deduplication enhancement
+
+**Total Development Time:** 3 days (intensive sessions)
 
 ---
 
