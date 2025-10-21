@@ -11,7 +11,7 @@ from datetime import datetime
 import logging
 
 from app.exchanges.coindcx.client import CoinDCXFutures
-from app.db.session import async_session_maker
+from app.db.session import AsyncSessionLocal
 from app.services.order_monitor import process_order_fill
 
 # Configure logging
@@ -171,7 +171,7 @@ class ConnectionManager:
         """
         try:
             # Create a new database session for this task
-            async with async_session_maker() as db:
+            async with AsyncSessionLocal() as db:
                 success = await process_order_fill(
                     exchange_order_id=exchange_order_id,
                     filled_quantity=filled_quantity,
