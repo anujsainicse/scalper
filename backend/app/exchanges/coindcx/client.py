@@ -469,15 +469,33 @@ class CoinDCXFutures:
     
     # ============= WebSocket Methods =============
     
-    async def connect_websocket(self):
-        """Connect to WebSocket for real-time data"""
+    def init_websocket_client(self):
+        """
+        Initialize Socket.IO client WITHOUT connecting
+
+        This MUST be called BEFORE registering event handlers.
+        Event handlers are registered via on_order_update(), etc.
+        After handlers are registered, call connect_websocket() to actually connect.
+        """
         if self.sio is None:
             # Create AsyncClient with explicit aiohttp support
             self.sio = socketio.AsyncClient(
                 logger=False,
                 engineio_logger=False
             )
-        
+            logger.info("🔧 [INIT] Socket.IO AsyncClient created (not connected yet)")
+        return self.sio
+
+    async def connect_websocket(self):
+        """
+        Connect to WebSocket for real-time data
+
+        IMPORTANT: Event handlers MUST be registered BEFORE calling this method!
+        Call init_websocket_client() first, then register handlers, then call this.
+        """
+        if self.sio is None:
+            raise RuntimeError("Socket.IO client not initialized! Call init_websocket_client() first.")
+
         if not self.ws_connected:
             try:
                 # Ensure aiohttp is available for websocket transport
@@ -486,19 +504,43 @@ class CoinDCXFutures:
                 except ImportError as e:
                     logger.error(f"aiohttp is required for websocket connections: {e}")
                     raise ImportError("aiohttp package is required. Install with: pip install aiohttp")
-                
+
+                # Register 'connect' event handler to subscribe AFTER connection established
+                @self.sio.on('connect')
+                async def on_connect():
+                    logger.info("🎉 [SOCKET.IO] 'connect' event triggered - connection established!")
+                    logger.info("📡 [SUBSCRIBE] Subscribing to authenticated channel...")
+                    await self._subscribe_authenticated_channel()
+                    self.ws_connected = True
+                    logger.info("✅ [SUBSCRIBE] Subscription complete and connection marked as connected")
+
+                # Register disconnect handler
+                @self.sio.on('disconnect')
+                async def on_disconnect():
+                    logger.warning("⚠️ [SOCKET.IO] 'disconnect' event - connection lost")
+                    self.ws_connected = False
+
+                # Register error handler
+                @self.sio.on('connect_error')
+                async def on_connect_error(data):
+                    logger.error(f"❌ [SOCKET.IO] Connection error: {data}")
+
+                # NOTE: Event handlers (df-order-update, etc.) MUST be registered BEFORE connecting
+                # They should have been registered via on_order_update(), on_position_update(), etc.
+                # before this method was called
+
+                logger.info("🔌 [CONNECT] Connecting Socket.IO client to CoinDCX WebSocket...")
                 await self.sio.connect(self.websocket_url, transports=['websocket'])
-                self.ws_connected = True
-                logger.info("WebSocket connected")
-                
+                logger.info("✅ [CONNECT] Connection initiated, waiting for 'connect' event...")
+
                 # Start ping task to keep connection alive
                 asyncio.create_task(self._ping_task())
-                
-                # Subscribe to authenticated channel
-                await self._subscribe_authenticated_channel()
-                
+
+                # Wait a moment for the connect event to fire and subscription to complete
+                await asyncio.sleep(1)
+
             except Exception as e:
-                logger.error(f"WebSocket connection failed: {e}")
+                logger.error(f"❌ [CONNECT] WebSocket connection failed: {e}")
                 raise
     
     async def _ping_task(self):
@@ -582,10 +624,22 @@ class CoinDCXFutures:
     
     def on_order_update(self, callback):
         """Register callback for order updates"""
+        logger.info(f"🔧 [REGISTER] on_order_update() called")
+        logger.info(f"   sio exists: {self.sio is not None}")
+        logger.info(f"   callback: {callback}")
+
         if self.sio:
+            logger.info(f"✅ [REGISTER] Registering df-order-update handler on Socket.IO client")
+
             @self.sio.on('df-order-update')
             async def handle_order_update(data):
+                logger.info(f"🎉 [SOCKET.IO] df-order-update event triggered! Calling callback...")
                 await callback(data)
+                logger.info(f"✅ [SOCKET.IO] Callback executed successfully")
+
+            logger.info(f"✅ [REGISTER] df-order-update handler registered successfully")
+        else:
+            logger.error(f"❌ [REGISTER] Cannot register handler - sio is None!")
     
     def on_balance_update(self, callback):
         """Register callback for balance updates"""

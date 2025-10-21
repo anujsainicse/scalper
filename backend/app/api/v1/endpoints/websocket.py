@@ -51,25 +51,57 @@ class ConnectionManager:
             asyncio.create_task(self.disconnect_coindcx())
 
     async def connect_coindcx(self):
-        """Connect to CoinDCX WebSocket"""
+        """
+        Connect to CoinDCX WebSocket with proper handler registration order
+
+        CRITICAL: Socket.IO requires handlers to be registered BEFORE connecting.
+        Correct order:
+        1. Create CoinDCXFutures client
+        2. Initialize Socket.IO client (creates self.sio object)
+        3. Register event handlers using @self.sio.on() decorators
+        4. Connect to WebSocket
+        """
         try:
-            logger.info("Connecting to CoinDCX WebSocket...")
+            logger.info("🔌 [STEP 1] Creating CoinDCXFutures client...")
             self.coindcx_client = CoinDCXFutures()
+            logger.info(f"✅ [STEP 1] CoinDCXFutures client created: {self.coindcx_client is not None}")
 
-            # Connect to WebSocket FIRST (this creates self.sio)
-            await self.coindcx_client.connect_websocket()
+            # STEP 2: Initialize Socket.IO client (creates self.sio) WITHOUT connecting
+            logger.info("🔌 [STEP 2] Initializing Socket.IO client...")
+            sio = self.coindcx_client.init_websocket_client()
+            logger.info(f"✅ [STEP 2] Socket.IO client initialized. sio exists: {sio is not None}")
 
-            # Register event handlers AFTER connection (requires self.sio to exist)
+            # STEP 3: Register event handlers BEFORE connecting (Socket.IO requirement!)
+            logger.info("📋 [STEP 3] Registering event handlers BEFORE connection...")
+            logger.info(f"   Handler function exists: {self.handle_order_update is not None}")
+            logger.info(f"   sio object exists: {self.coindcx_client.sio is not None}")
+
             self.coindcx_client.on_order_update(self.handle_order_update)
+            logger.info("✅ [STEP 3a] Order update handler registered")
+
             self.coindcx_client.on_position_update(self.handle_position_update)
+            logger.info("✅ [STEP 3b] Position update handler registered")
+
             self.coindcx_client.on_balance_update(self.handle_balance_update)
+            logger.info("✅ [STEP 3c] Balance update handler registered")
+
+            # STEP 4: NOW connect to WebSocket (handlers are already registered)
+            logger.info("🔌 [STEP 4] Connecting to CoinDCX WebSocket with handlers registered...")
+            await self.coindcx_client.connect_websocket()
+            logger.info(f"✅ [STEP 4] WebSocket connected successfully")
 
             self.coindcx_connected = True
 
-            logger.info("✅ Connected to CoinDCX WebSocket and registered handlers")
+            logger.info("✅ [COMPLETE] CoinDCX WebSocket fully connected with event handlers")
+            logger.info(f"   Connection status: {self.coindcx_connected}")
+            logger.info(f"   Waiting for order events on channel: df-order-update")
+            logger.info(f"   NOTE: Handlers were registered BEFORE connecting (correct order)")
 
         except Exception as e:
             logger.error(f"❌ Failed to connect to CoinDCX: {e}")
+            logger.error(f"❌ Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"❌ Traceback:\n{traceback.format_exc()}")
             self.coindcx_connected = False
 
     async def disconnect_coindcx(self):
@@ -101,13 +133,32 @@ class ConnectionManager:
 
     async def handle_order_update(self, data: dict):
         """Handle order update from CoinDCX"""
+        logger.info("🔔 ========== ORDER UPDATE EVENT RECEIVED ==========")
+        logger.info(f"🔔 [EVENT] Raw data type: {type(data)}")
+        logger.info(f"🔔 [EVENT] Handler called successfully!")
+
         try:
             # Parse the data - CoinDCX sends it as a JSON string
             if isinstance(data, dict) and 'data' in data:
+                logger.info(f"🔍 [PARSE] Data has 'data' key, parsing JSON...")
                 order_list = json.loads(data['data'])
                 order_data = order_list[0] if order_list else {}
+                logger.info(f"✅ [PARSE] Extracted order data from list")
             else:
+                logger.info(f"🔍 [PARSE] Using data directly (no 'data' key)")
                 order_data = data
+
+            order_id = order_data.get("id")
+            order_status = order_data.get("status", "").lower()
+            filled_qty = float(order_data.get("filled_quantity", 0))
+            total_qty = float(order_data.get("total_quantity", 0))
+
+            logger.info(f"📋 [ORDER INFO]:")
+            logger.info(f"   Order ID: {order_id}")
+            logger.info(f"   Status: {order_status}")
+            logger.info(f"   Filled: {filled_qty}/{total_qty}")
+            logger.info(f"   Pair: {order_data.get('pair')}")
+            logger.info(f"   Side: {order_data.get('side')}")
 
             # Create event message
             event = {
@@ -115,14 +166,14 @@ class ConnectionManager:
                 "timestamp": datetime.now().isoformat(),
                 "type": "order",
                 "data": {
-                    "id": order_data.get("id"),
+                    "id": order_id,
                     "pair": order_data.get("pair"),
                     "side": order_data.get("side"),
                     "status": order_data.get("status"),
                     "order_type": order_data.get("order_type"),
                     "price": float(order_data.get("price", 0)),
-                    "total_quantity": float(order_data.get("total_quantity", 0)),
-                    "filled_quantity": float(order_data.get("filled_quantity", 0)),
+                    "total_quantity": total_qty,
+                    "filled_quantity": filled_qty,
                     "remaining_quantity": float(order_data.get("remaining_quantity", 0)),
                     "leverage": order_data.get("leverage"),
                     "display_message": order_data.get("display_message"),
@@ -130,32 +181,60 @@ class ConnectionManager:
                 }
             }
 
-            logger.info(f"📦 Order Update: {order_data.get('id')} - {order_data.get('status')}")
+            logger.info(f"📤 [BROADCAST] Broadcasting to {len(self.active_connections)} WebSocket clients")
             await self.broadcast(event)
 
             # Check if order is filled - trigger opposite order placement
-            order_status = order_data.get("status", "").lower()
+            logger.info(f"🔍 [FILL CHECK] Checking if order should trigger opposite placement...")
+            logger.info(f"   Status == 'filled'? {order_status == 'filled'}")
+            logger.info(f"   Filled >= Total? {filled_qty >= total_qty}")
+            logger.info(f"   Total > 0? {total_qty > 0}")
+
             if order_status == "filled":
-                filled_qty = float(order_data.get("filled_quantity", 0))
-                total_qty = float(order_data.get("total_quantity", 0))
+                logger.info(f"✅ [FILL CHECK] Status is 'filled', checking quantity...")
+
+                # CoinDCX WebSocket sometimes sends filled_quantity as 0 even when status is "filled"
+                # In this case, trust the status and use total_quantity
+                if filled_qty == 0 and total_qty > 0:
+                    logger.warning(f"⚠️ [QUIRK] filled_quantity is 0 but status is 'filled' - using total_quantity")
+                    filled_qty = total_qty
 
                 # Only process if completely filled
                 if filled_qty >= total_qty and total_qty > 0:
-                    logger.info(
-                        f"🎯 Order {order_data.get('id')} is FILLED. "
-                        f"Processing opposite order placement..."
-                    )
+                    logger.info(f"🎯 ========== FILL DETECTED ==========")
+                    logger.info(f"🎯 [TRIGGER] Order {order_id} is COMPLETELY FILLED!")
+                    logger.info(f"🎯 [TRIGGER] Filled: {filled_qty}, Total: {total_qty}")
+                    logger.info(f"🎯 [TRIGGER] Starting opposite order placement process...")
+
+                    avg_price = float(order_data.get("avg_price", order_data.get("price", 0)))
+                    logger.info(f"🎯 [TRIGGER] Fill price: ${avg_price}")
 
                     # Process the fill in a background task to avoid blocking WebSocket
+                    logger.info(f"🚀 [ASYNC] Creating background task for opposite order placement...")
                     asyncio.create_task(self._process_filled_order(
-                        exchange_order_id=order_data.get("id"),
+                        exchange_order_id=order_id,
                         filled_quantity=filled_qty,
                         total_quantity=total_qty,
-                        filled_price=float(order_data.get("avg_price", order_data.get("price", 0)))
+                        filled_price=avg_price
                     ))
+                    logger.info(f"✅ [ASYNC] Background task created successfully")
+                else:
+                    logger.warning(f"⚠️ [SKIP] Order {order_id} status is 'filled' but quantity check failed:")
+                    logger.warning(f"   Filled: {filled_qty}, Total: {total_qty}")
+                    logger.warning(f"   filled_qty >= total_qty: {filled_qty >= total_qty}")
+                    logger.warning(f"   total_qty > 0: {total_qty > 0}")
+            else:
+                logger.info(f"ℹ️ [SKIP] Order status is '{order_status}', not 'filled'. No action needed.")
+
+            logger.info(f"📦 ========== ORDER UPDATE PROCESSING COMPLETE ==========\n")
 
         except Exception as e:
-            logger.error(f"Error handling order update: {e}")
+            logger.error(f"❌ ========== ERROR IN ORDER UPDATE HANDLER ==========")
+            logger.error(f"❌ [ERROR] Exception: {e}")
+            logger.error(f"❌ [ERROR] Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"❌ [ERROR] Traceback:\n{traceback.format_exc()}")
+            logger.error(f"❌ ==========================================================\n")
 
     async def _process_filled_order(
         self,
@@ -169,9 +248,21 @@ class ConnectionManager:
 
         This runs asynchronously to avoid blocking the WebSocket connection
         """
+        logger.info(f"🚀 ========== BACKGROUND TASK STARTED ==========")
+        logger.info(f"🚀 [TASK] Processing filled order: {exchange_order_id}")
+        logger.info(f"🚀 [TASK] Parameters:")
+        logger.info(f"   - Order ID: {exchange_order_id}")
+        logger.info(f"   - Filled Qty: {filled_quantity}")
+        logger.info(f"   - Total Qty: {total_quantity}")
+        logger.info(f"   - Fill Price: ${filled_price}")
+
         try:
             # Create a new database session for this task
+            logger.info(f"💾 [DB] Creating new database session...")
             async with AsyncSessionLocal() as db:
+                logger.info(f"✅ [DB] Database session created successfully")
+                logger.info(f"📞 [CALL] Calling process_order_fill() from order_monitor.py...")
+
                 success = await process_order_fill(
                     exchange_order_id=exchange_order_id,
                     filled_quantity=filled_quantity,
@@ -180,13 +271,27 @@ class ConnectionManager:
                     db=db
                 )
 
+                logger.info(f"📞 [CALL] process_order_fill() returned: {success}")
+
                 if success:
-                    logger.info(f"✅ Successfully processed filled order {exchange_order_id}")
+                    logger.info(f"✅ ========== OPPOSITE ORDER PLACED SUCCESSFULLY ==========")
+                    logger.info(f"✅ [SUCCESS] Order {exchange_order_id} processed")
+                    logger.info(f"✅ [SUCCESS] Opposite order should now be on exchange")
+                    logger.info(f"✅ ==========================================================\n")
                 else:
-                    logger.warning(f"⚠️ Failed to process filled order {exchange_order_id}")
+                    logger.warning(f"⚠️ ========== OPPOSITE ORDER PLACEMENT FAILED ==========")
+                    logger.warning(f"⚠️ [FAILURE] Order {exchange_order_id} processing failed")
+                    logger.warning(f"⚠️ [FAILURE] Check order_monitor.py logs for details")
+                    logger.warning(f"⚠️ ==========================================================\n")
 
         except Exception as e:
-            logger.error(f"❌ Error in background task for order {exchange_order_id}: {e}")
+            logger.error(f"❌ ========== BACKGROUND TASK EXCEPTION ==========")
+            logger.error(f"❌ [EXCEPTION] Order: {exchange_order_id}")
+            logger.error(f"❌ [EXCEPTION] Error: {e}")
+            logger.error(f"❌ [EXCEPTION] Type: {type(e).__name__}")
+            import traceback
+            logger.error(f"❌ [EXCEPTION] Traceback:\n{traceback.format_exc()}")
+            logger.error(f"❌ ==========================================================\n")
 
     async def handle_position_update(self, data: dict):
         """Handle position update from CoinDCX"""
