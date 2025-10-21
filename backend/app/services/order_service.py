@@ -66,18 +66,9 @@ async def place_order_for_bot(
 
         # Determine leverage
         if leverage is None:
-            # Check for existing position and use its leverage
-            existing_position = await exchange.get_position(bot.ticker)
-            if existing_position and existing_position.size != 0:
-                leverage = int(existing_position.leverage)
-                logger.info(
-                    f"Found existing position for {bot.ticker} with leverage {leverage}x. "
-                    f"Using same leverage for new order."
-                )
-            else:
-                # Use the bot's configured leverage or default to 3x
-                leverage = bot.leverage if bot.leverage else 3
-                logger.info(f"No existing position for {bot.ticker}. Using bot's configured leverage {leverage}x")
+            # Use the bot's configured leverage or default to 3x
+            leverage = bot.leverage if bot.leverage else 3
+            logger.info(f"Using bot's configured leverage {leverage}x")
 
         # Convert side to exchange enum
         exchange_side = OrderSide.BUY if side == BotOrderSide.BUY else OrderSide.SELL

@@ -68,6 +68,7 @@ class ApiClient {
     options?: RequestInit
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    console.log(`[API-REQUEST] ${options?.method || 'GET'} ${url}`);
 
     const response = await fetch(url, {
       ...options,
@@ -77,17 +78,25 @@ class ApiClient {
       },
     });
 
+    console.log(`[API-RESPONSE] Status: ${response.status} ${response.statusText}`);
+    console.log(`[API-RESPONSE] Content-Length: ${response.headers.get('content-length')}`);
+
     if (!response.ok) {
+      console.error(`[API-RESPONSE] Request failed with status ${response.status}`);
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      console.error(`[API-RESPONSE] Error details:`, error);
       throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
 
     // Handle 204 No Content responses (no body to parse)
     if (response.status === 204 || response.headers.get('content-length') === '0') {
+      console.log(`[API-RESPONSE] 204 No Content - returning null`);
       return null as T;
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log(`[API-RESPONSE] Response data:`, data);
+    return data;
   }
 
   // Bot endpoints
@@ -120,9 +129,18 @@ class ApiClient {
   }
 
   async deleteBot(botId: string): Promise<void> {
-    return this.request<void>(`/bots/${botId}`, {
-      method: 'DELETE',
-    });
+    console.log('[API] deleteBot called with botId:', botId);
+    console.log('[API] Making DELETE request to:', `${this.baseUrl}/bots/${botId}`);
+    try {
+      const result = await this.request<void>(`/bots/${botId}`, {
+        method: 'DELETE',
+      });
+      console.log('[API] DELETE request completed successfully, result:', result);
+      return result;
+    } catch (error) {
+      console.error('[API] DELETE request failed:', error);
+      throw error;
+    }
   }
 
   async startBot(botId: string): Promise<Bot> {

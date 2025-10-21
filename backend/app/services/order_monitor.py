@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 import logging
+import asyncio
 from typing import Optional, Tuple
 
 from app.models.bot import Bot, BotStatus
@@ -28,6 +29,10 @@ from app.services.order_service import (
 from app.services.telegram import telegram_service
 
 logger = logging.getLogger(__name__)
+
+# Lock to prevent duplicate order processing
+_processing_locks = {}
+_locks_lock = asyncio.Lock()
 
 
 async def process_order_fill(
@@ -50,102 +55,110 @@ async def process_order_fill(
     Returns:
         True if processing successful, False otherwise
     """
-    try:
-        # Check if order is completely filled
-        if filled_quantity < total_quantity:
-            logger.info(
-                f"Order {exchange_order_id} partially filled: "
-                f"{filled_quantity}/{total_quantity}. Waiting for complete fill."
-            )
-            return False
+    # Get or create a lock for this specific order
+    async with _locks_lock:
+        if exchange_order_id not in _processing_locks:
+            _processing_locks[exchange_order_id] = asyncio.Lock()
+        order_lock = _processing_locks[exchange_order_id]
 
-        # Get order from database
-        order = await get_order_by_exchange_id(exchange_order_id, db)
-        if not order:
-            logger.warning(f"Order {exchange_order_id} not found in database")
-            return False
+    # Acquire the lock for this order to prevent duplicate processing
+    async with order_lock:
+        try:
+            # Check if order is completely filled
+            if filled_quantity < total_quantity:
+                logger.info(
+                    f"Order {exchange_order_id} partially filled: "
+                    f"{filled_quantity}/{total_quantity}. Waiting for complete fill."
+                )
+                return False
 
-        # Check if order already processed
-        if order.status == OrderStatus.FILLED:
-            logger.info(f"Order {order.id} already marked as FILLED. Skipping.")
-            return False
+            # Get order from database
+            order = await get_order_by_exchange_id(exchange_order_id, db)
+            if not order:
+                logger.warning(f"Order {exchange_order_id} not found in database")
+                return False
 
-        # Update order status to FILLED
-        await update_order_status(
-            order,
-            OrderStatus.FILLED,
-            filled_quantity=filled_quantity,
-            filled_price=filled_price,
-            db=db
-        )
+            # Check if order already processed
+            if order.status == OrderStatus.FILLED:
+                logger.info(f"Order {order.id} already marked as FILLED. Skipping duplicate processing.")
+                return False
 
-        # Get the bot
-        result = await db.execute(select(Bot).where(Bot.id == order.bot_id))
-        bot = result.scalar_one_or_none()
-        if not bot:
-            logger.error(f"Bot {order.bot_id} not found for order {order.id}")
-            return False
-
-        # Check if bot is still active
-        if bot.status != BotStatus.ACTIVE:
-            logger.info(f"Bot {bot.id} is {bot.status.value}. Not placing opposite order.")
-            return False
-
-        # Update bot's last_fill_time
-        bot.last_fill_time = datetime.utcnow()
-
-        # Log the fill
-        log = ActivityLog(
-            bot_id=bot.id,
-            level="SUCCESS",
-            message=f"{order.side.value} order filled at ${order.filled_price or order.price}"
-        )
-        db.add(log)
-
-        # Place opposite order
-        opposite_order = await place_opposite_order(order, bot, db)
-
-        if opposite_order:
-            logger.info(
-                f"Successfully placed opposite order {opposite_order.id} "
-                f"for filled order {order.id}"
+            # Update order status to FILLED
+            await update_order_status(
+                order,
+                OrderStatus.FILLED,
+                filled_quantity=filled_quantity,
+                filled_price=filled_price,
+                db=db
             )
 
-            # Link the orders
-            order.paired_order_id = opposite_order.id
-            opposite_order.paired_order_id = order.id
+            # Get the bot
+            result = await db.execute(select(Bot).where(Bot.id == order.bot_id))
+            bot = result.scalar_one_or_none()
+            if not bot:
+                logger.error(f"Bot {order.bot_id} not found for order {order.id}")
+                return False
 
-            # Log opposite order placement
+            # Check if bot is still active
+            if bot.status != BotStatus.ACTIVE:
+                logger.info(f"Bot {bot.id} is {bot.status.value}. Not placing opposite order.")
+                return False
+
+            # Update bot's last_fill_time
+            bot.last_fill_time = datetime.utcnow()
+
+            # Log the fill
             log = ActivityLog(
                 bot_id=bot.id,
-                level="INFO",
-                message=f"{opposite_order.side.value} order placed at ${opposite_order.price} (opposite of filled order)"
+                level="SUCCESS",
+                message=f"{order.side.value} order filled at ${order.filled_price or order.price}"
             )
             db.add(log)
 
-            # Send Telegram notification
-            await telegram_service.send_notification(
-                db=db,
-                message=f"*Order Filled \u2192 Opposite Order Placed*\n\n"
-                        f"Bot: {bot.ticker}\n"
-                        f"Filled: {order.side.value} @ ${order.filled_price or order.price}\n"
-                        f"Placed: {opposite_order.side.value} @ ${opposite_order.price}\n"
-                        f"Quantity: {bot.quantity}",
-                level="SUCCESS"
-            )
+            # Place opposite order
+            opposite_order = await place_opposite_order(order, bot, db)
 
-        await db.commit()
+            if opposite_order:
+                logger.info(
+                    f"Successfully placed opposite order {opposite_order.id} "
+                    f"for filled order {order.id}"
+                )
 
-        # Check if this completes a cycle (sell order of a buy-sell pair)
-        if order.side == BotOrderSide.SELL and order.paired_order_id:
-            await complete_trading_cycle(order, bot, db)
+                # Link the orders
+                order.paired_order_id = opposite_order.id
+                opposite_order.paired_order_id = order.id
 
-        return True
+                # Log opposite order placement
+                log = ActivityLog(
+                    bot_id=bot.id,
+                    level="INFO",
+                    message=f"{opposite_order.side.value} order placed at ${opposite_order.price} (opposite of filled order)"
+                )
+                db.add(log)
 
-    except Exception as e:
-        logger.error(f"Error processing order fill for {exchange_order_id}: {e}")
-        await db.rollback()
-        return False
+                # Send Telegram notification
+                await telegram_service.send_notification(
+                    db=db,
+                    message=f"*Order Filled \u2192 Opposite Order Placed*\n\n"
+                            f"Bot: {bot.ticker}\n"
+                            f"Filled: {order.side.value} @ ${order.filled_price or order.price}\n"
+                            f"Placed: {opposite_order.side.value} @ ${opposite_order.price}\n"
+                            f"Quantity: {bot.quantity}",
+                    level="SUCCESS"
+                )
+
+            await db.commit()
+
+            # Check if this completes a cycle (sell order of a buy-sell pair)
+            if order.side == BotOrderSide.SELL and order.paired_order_id:
+                await complete_trading_cycle(order, bot, db)
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Error processing order fill for {exchange_order_id}: {e}")
+            await db.rollback()
+            return False
 
 
 async def place_opposite_order(

@@ -125,18 +125,28 @@ export const useBotStore = create<BotStore>((set, get) => ({
   },
 
   removeBot: async (botId: string) => {
+    console.log('[STORE] removeBot called with botId:', botId);
     set({ isLoading: true, error: null });
     try {
-      await api.deleteBot(botId);
+      console.log('[STORE] Calling API deleteBot...');
+      const result = await api.deleteBot(botId);
+      console.log('[STORE] API deleteBot returned:', result);
 
+      console.log('[STORE] Updating state - removing bot from list');
       set((state) => ({
         bots: state.bots.filter((b) => b.id !== botId),
         isLoading: false,
       }));
+      console.log('[STORE] State updated successfully');
 
       // Refresh logs
+      console.log('[STORE] Fetching updated logs...');
       await get().fetchLogs();
+      console.log('[STORE] Logs refreshed');
     } catch (error) {
+      console.error('[STORE] Error in removeBot:', error);
+      console.error('[STORE] Error type:', error instanceof Error ? 'Error object' : typeof error);
+      console.error('[STORE] Error message:', error instanceof Error ? error.message : String(error));
       set({
         error: error instanceof Error ? error.message : 'Failed to delete bot',
         isLoading: false

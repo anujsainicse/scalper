@@ -35,7 +35,7 @@ export const BotConfiguration: React.FC = () => {
     ticker: POPULAR_TICKERS[0] || '',
     exchange: 'CoinDCX F',
     firstOrder: 'BUY',
-    quantity: 1,
+    quantity: 0.01,
     customQuantity: undefined,
     buyPrice: 0,
     sellPrice: 0,

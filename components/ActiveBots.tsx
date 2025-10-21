@@ -42,17 +42,34 @@ export const ActiveBots: React.FC = () => {
     stoppedBots;
 
   const handleDeleteBot = async (botId: string) => {
+    console.log('[DELETE] handleDeleteBot called with botId:', botId);
+    console.log('[DELETE] Current deletingBot state:', deletingBot);
+
     if (deletingBot === botId) {
+      // Second click - actually delete
+      console.log('[DELETE] Second click detected - proceeding with deletion');
       try {
+        console.log('[DELETE] Calling removeBot API...');
         await removeBot(botId);
+        console.log('[DELETE] removeBot completed successfully');
         toast.success('✅ Bot deleted');
         setDeletingBot(null);
+        console.log('[DELETE] Deletion complete');
       } catch (error) {
-        toast.error('❌ Failed to delete bot');
+        console.error('[DELETE] Error during deletion:', error);
+        console.error('[DELETE] Error details:', error instanceof Error ? error.message : String(error));
+        toast.error(`❌ Failed to delete bot: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setDeletingBot(null);
       }
     } else {
+      // First click - set confirmation state
+      console.log('[DELETE] First click detected - setting confirmation state');
       setDeletingBot(botId);
-      setTimeout(() => setDeletingBot(null), 3000);
+      toast('🗑️ Click Delete again to confirm', { duration: 3000 });
+      setTimeout(() => {
+        console.log('[DELETE] Confirmation timeout - resetting state');
+        setDeletingBot(null);
+      }, 3000);
     }
   };
 

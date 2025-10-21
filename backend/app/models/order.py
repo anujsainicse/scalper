@@ -49,7 +49,7 @@ class Order(Base):
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False, index=True)
 
     # Order Pairing (for tracking buy-sell cycles)
-    paired_order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, index=True)
+    paired_order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Execution Details
     filled_quantity = Column(Numeric(20, 8), default=0, nullable=False)

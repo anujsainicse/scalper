@@ -244,30 +244,199 @@ async def update_bot(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Update a bot's configuration
+    Update a bot's configuration and manage exchange orders
+
+    If bot is ACTIVE:
+    - Cancels all pending orders on exchange
+    - Updates bot configuration
+    - Places new orders with updated parameters
+
+    If bot is STOPPED:
+    - Only updates configuration in database
     """
+    logger.info(f"[UPDATE-BOT] Received update request for bot_id: {bot_id}")
+
     result = await db.execute(select(Bot).where(Bot.id == bot_id))
     bot = result.scalar_one_or_none()
 
     if not bot:
+        logger.warning(f"[UPDATE-BOT] Bot {bot_id} not found")
         raise HTTPException(status_code=404, detail="Bot not found")
+
+    is_active = bot.status == BotStatus.ACTIVE
+    logger.info(f"[UPDATE-BOT] Bot status: {bot.status.value}")
+
+    # Store old values for comparison
+    old_buy_price = bot.buy_price
+    old_sell_price = bot.sell_price
+    old_quantity = bot.quantity
+    old_first_order = bot.first_order
 
     # Update bot fields
     update_data = bot_data.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(bot, field, value)
 
-    # Create activity log
-    log = ActivityLog(
-        bot_id=bot.id,
-        level="INFO",
-        message=f"Bot updated for {bot.ticker} on {bot.exchange.value}"
-    )
-    db.add(log)
+    logger.info(f"[UPDATE-BOT] Bot configuration updated in database")
+
+    # If bot is ACTIVE, manage orders on exchange
+    if is_active:
+        logger.info(f"[UPDATE-BOT] Bot is ACTIVE, managing exchange orders...")
+
+        try:
+            # Get exchange adapter
+            exchange = get_exchange_for_bot(bot)
+
+            # Get all pending orders for this bot
+            orders_result = await db.execute(
+                select(OrderModel).where(
+                    OrderModel.bot_id == bot_id,
+                    OrderModel.status.in_([DBOrderStatus.PENDING, DBOrderStatus.PARTIALLY_FILLED])
+                )
+            )
+            pending_orders = orders_result.scalars().all()
+
+            cancelled_count = 0
+
+            # Cancel all pending orders
+            for order in pending_orders:
+                try:
+                    logger.info(f"[UPDATE-BOT] Cancelling order {order.exchange_order_id}")
+                    await exchange.cancel_order(order.exchange_order_id, bot.ticker)
+                    order.status = DBOrderStatus.CANCELLED
+                    cancelled_count += 1
+                    logger.info(f"[UPDATE-BOT] Order {order.exchange_order_id} cancelled successfully")
+                except Exception as cancel_error:
+                    logger.error(f"[UPDATE-BOT] Failed to cancel order {order.exchange_order_id}: {cancel_error}")
+                    # Continue with other orders even if one fails
+                    pass
+
+            if cancelled_count > 0:
+                log = ActivityLog(
+                    bot_id=bot.id,
+                    level="INFO",
+                    message=f"{cancelled_count} pending order(s) cancelled"
+                )
+                db.add(log)
+                logger.info(f"[UPDATE-BOT] Cancelled {cancelled_count} order(s)")
+
+            # Place new order with updated parameters
+            # Determine order side based on last filled order (opposite of last fill)
+            last_filled_query = select(OrderModel).where(
+                OrderModel.bot_id == bot_id,
+                OrderModel.status == DBOrderStatus.FILLED
+            ).order_by(OrderModel.created_at.desc()).limit(1)
+
+            last_filled_result = await db.execute(last_filled_query)
+            last_filled_order = last_filled_result.scalar_one_or_none()
+
+            if last_filled_order:
+                # Place opposite of what was last filled
+                if last_filled_order.side == BotOrderSide.BUY:
+                    order_side_enum = OrderSide.SELL
+                    bot_order_side = BotOrderSide.SELL
+                    order_price = bot.sell_price
+                    logger.info(f"[UPDATE-BOT] Last filled was BUY, placing SELL order")
+                else:
+                    order_side_enum = OrderSide.BUY
+                    bot_order_side = BotOrderSide.BUY
+                    order_price = bot.buy_price
+                    logger.info(f"[UPDATE-BOT] Last filled was SELL, placing BUY order")
+            else:
+                # No filled orders yet - use first_order as fallback
+                order_side_enum = OrderSide.BUY if bot.first_order == BotOrderSide.BUY else OrderSide.SELL
+                bot_order_side = bot.first_order
+                order_price = bot.buy_price if bot.first_order == BotOrderSide.BUY else bot.sell_price
+                logger.info(f"[UPDATE-BOT] No filled orders, using first_order: {bot.first_order.value}")
+
+            leverage = bot.leverage if bot.leverage else 3
+
+            # Create order request
+            order_request = OrderRequest(
+                symbol=bot.ticker,
+                side=order_side_enum,
+                order_type=OrderType.LIMIT,
+                quantity=float(bot.quantity),
+                price=float(order_price),
+                leverage=leverage,
+                time_in_force="GTC"
+            )
+
+            logger.info(
+                f"[UPDATE-BOT] Placing new {order_side_enum.value} order: "
+                f"{bot.ticker} @ ${order_price} qty={bot.quantity}"
+            )
+
+            # Place order on exchange
+            order_response = await exchange.place_order(order_request)
+
+            # Create order record in database
+            new_order = OrderModel(
+                bot_id=bot.id,
+                exchange_order_id=order_response.order_id,
+                symbol=bot.ticker,
+                side=bot_order_side,
+                order_type=DBOrderType.LIMIT,
+                quantity=bot.quantity,
+                price=order_price,
+                status=DBOrderStatus.PENDING,
+                filled_quantity=float(order_response.filled_quantity),
+                filled_price=float(order_response.average_price) if order_response.average_price else None,
+                commission=0.0
+            )
+            db.add(new_order)
+
+            log = ActivityLog(
+                bot_id=bot.id,
+                level="SUCCESS",
+                message=f"New {order_side_enum.value} order placed at ${order_price}"
+            )
+            db.add(log)
+
+            logger.info(f"[UPDATE-BOT] New order placed successfully: {order_response.order_id}")
+
+            # Send Telegram notification
+            await telegram_service.send_notification(
+                db=db,
+                message=f"*Bot Updated*\n\n"
+                        f"Ticker: {bot.ticker}\n"
+                        f"Cancelled: {cancelled_count} order(s)\n"
+                        f"New Order: {order_side_enum.value} {bot.quantity} @ ${order_price}",
+                level="SUCCESS"
+            )
+
+        except Exception as e:
+            logger.error(f"[UPDATE-BOT] Error managing exchange orders: {e}")
+            bot.status = BotStatus.ERROR
+
+            log = ActivityLog(
+                bot_id=bot.id,
+                level="ERROR",
+                message=f"Failed to update orders on exchange: {str(e)}"
+            )
+            db.add(log)
+
+            await db.commit()
+            await db.refresh(bot)
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update orders on exchange: {str(e)}"
+            )
+    else:
+        # Bot is STOPPED, just update configuration
+        logger.info(f"[UPDATE-BOT] Bot is STOPPED, only updating configuration")
+        log = ActivityLog(
+            bot_id=bot.id,
+            level="INFO",
+            message=f"Bot configuration updated (bot is {bot.status.value})"
+        )
+        db.add(log)
 
     await db.commit()
     await db.refresh(bot)
 
+    logger.info(f"[UPDATE-BOT] Bot {bot_id} updated successfully")
     return bot
 
 
@@ -279,11 +448,16 @@ async def delete_bot(
     """
     Delete a bot and cancel all its open orders
     """
+    logger.info(f"[DELETE-BOT] Received delete request for bot_id: {bot_id}")
+
     result = await db.execute(select(Bot).where(Bot.id == bot_id))
     bot = result.scalar_one_or_none()
 
     if not bot:
+        logger.warning(f"[DELETE-BOT] Bot {bot_id} not found")
         raise HTTPException(status_code=404, detail="Bot not found")
+
+    logger.info(f"[DELETE-BOT] Found bot: {bot.ticker} on {bot.exchange.value}")
 
     # Store bot info before deleting
     ticker = bot.ticker
@@ -293,6 +467,7 @@ async def delete_bot(
     cancelled_count = 0
     try:
         # Get all pending orders for this bot
+        logger.info(f"[DELETE-BOT] Checking for pending orders...")
         orders_result = await db.execute(
             select(OrderModel).where(
                 OrderModel.bot_id == bot_id,
@@ -302,7 +477,7 @@ async def delete_bot(
         open_orders = orders_result.scalars().all()
 
         if open_orders:
-            logger.info(f"Cancelling {len(open_orders)} open orders for bot {bot_id}")
+            logger.info(f"[DELETE-BOT] Cancelling {len(open_orders)} open orders for bot {bot_id}")
 
             # Get exchange adapter
             exchange_adapter = get_exchange_for_bot(bot)
@@ -310,6 +485,7 @@ async def delete_bot(
             # Cancel each order
             for order in open_orders:
                 try:
+                    logger.info(f"[DELETE-BOT] Attempting to cancel order {order.exchange_order_id}")
                     # Cancel on exchange
                     success = await exchange_adapter.cancel_order(
                         order_id=order.exchange_order_id,
@@ -320,19 +496,28 @@ async def delete_bot(
                         # Update order status in database
                         order.status = DBOrderStatus.CANCELLED
                         cancelled_count += 1
-                        logger.info(f"Cancelled order {order.exchange_order_id}")
+                        logger.info(f"[DELETE-BOT] Successfully cancelled order {order.exchange_order_id}")
                     else:
-                        logger.warning(f"Failed to cancel order {order.exchange_order_id}")
+                        # Order might already be cancelled on exchange - mark as cancelled anyway
+                        logger.warning(f"[DELETE-BOT] Exchange returned false for order {order.exchange_order_id}, marking as cancelled")
+                        order.status = DBOrderStatus.CANCELLED
 
                 except Exception as e:
-                    logger.error(f"Error cancelling order {order.exchange_order_id}: {e}")
+                    # Order might have been manually cancelled on exchange
+                    logger.warning(f"[DELETE-BOT] Could not cancel order {order.exchange_order_id}: {e}")
+                    logger.info(f"[DELETE-BOT] Marking order {order.exchange_order_id} as cancelled in database")
+                    # Mark as cancelled in database even if exchange call failed
+                    order.status = DBOrderStatus.CANCELLED
 
             await db.flush()
 
     except Exception as e:
-        logger.error(f"Error during order cancellation for bot {bot_id}: {e}")
+        logger.error(f"[DELETE-BOT] Error during order cancellation for bot {bot_id}: {e}")
+    else:
+        logger.info(f"[DELETE-BOT] No pending orders found")
 
     # Create activity log before deleting
+    logger.info(f"[DELETE-BOT] Creating activity log...")
     cancel_msg = f" ({cancelled_count} orders cancelled)" if cancelled_count > 0 else ""
     log = ActivityLog(
         bot_id=bot.id,
@@ -341,10 +526,13 @@ async def delete_bot(
     )
     db.add(log)
 
+    logger.info(f"[DELETE-BOT] Deleting bot from database...")
     await db.delete(bot)
     await db.commit()
+    logger.info(f"[DELETE-BOT] Bot deleted successfully from database")
 
     # Send Telegram notification
+    logger.info(f"[DELETE-BOT] Sending Telegram notification...")
     cancel_text = f"\nCancelled Orders: {cancelled_count}" if cancelled_count > 0 else ""
     await telegram_service.send_notification(
         db=db,
@@ -353,6 +541,7 @@ async def delete_bot(
                 f"Exchange: {exchange}{cancel_text}",
         level="WARNING"
     )
+    logger.info(f"[DELETE-BOT] Delete operation completed successfully")
 
     return None
 
