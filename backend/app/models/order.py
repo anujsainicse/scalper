@@ -56,6 +56,9 @@ class Order(Base):
     filled_price = Column(Numeric(20, 8), nullable=True)
     commission = Column(Numeric(20, 8), default=0, nullable=False)
 
+    # Cancellation tracking
+    cancellation_reason = Column(String(50), nullable=True)  # "UPDATE", "STOP", "DELETE", "MANUAL", None
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

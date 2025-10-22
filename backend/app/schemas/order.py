@@ -53,6 +53,7 @@ class OrderResponse(OrderBase):
     filled_quantity: Decimal
     filled_price: Optional[Decimal]
     commission: Decimal
+    cancellation_reason: Optional[str] = None  # "UPDATE", "STOP", "DELETE", "MANUAL", None
     created_at: datetime
     updated_at: datetime
 

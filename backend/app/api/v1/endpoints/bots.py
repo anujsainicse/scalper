@@ -304,6 +304,7 @@ async def update_bot(
                     logger.info(f"[UPDATE-BOT] Cancelling order {order.exchange_order_id}")
                     await exchange.cancel_order(order.exchange_order_id, bot.ticker)
                     order.status = DBOrderStatus.CANCELLED
+                    order.cancellation_reason = "UPDATE"  # Mark as update-initiated cancellation
                     cancelled_count += 1
                     logger.info(f"[UPDATE-BOT] Order {order.exchange_order_id} cancelled successfully")
                 except Exception as cancel_error:
@@ -495,12 +496,14 @@ async def delete_bot(
                     if success:
                         # Update order status in database
                         order.status = DBOrderStatus.CANCELLED
+                        order.cancellation_reason = "DELETE"  # Mark as delete-initiated cancellation
                         cancelled_count += 1
                         logger.info(f"[DELETE-BOT] Successfully cancelled order {order.exchange_order_id}")
                     else:
                         # Order might already be cancelled on exchange - mark as cancelled anyway
                         logger.warning(f"[DELETE-BOT] Exchange returned false for order {order.exchange_order_id}, marking as cancelled")
                         order.status = DBOrderStatus.CANCELLED
+                        order.cancellation_reason = "DELETE"  # Mark as delete-initiated cancellation
 
                 except Exception as e:
                     # Order might have been manually cancelled on exchange
@@ -508,6 +511,7 @@ async def delete_bot(
                     logger.info(f"[DELETE-BOT] Marking order {order.exchange_order_id} as cancelled in database")
                     # Mark as cancelled in database even if exchange call failed
                     order.status = DBOrderStatus.CANCELLED
+                    order.cancellation_reason = "DELETE"  # Mark as delete-initiated cancellation
 
             await db.flush()
 
@@ -682,6 +686,7 @@ async def stop_bot(
                     if success:
                         # Update order status in database
                         order.status = DBOrderStatus.CANCELLED
+                        order.cancellation_reason = "STOP"  # Mark as stop-initiated cancellation
                         cancelled_count += 1
                         logger.info(f"Cancelled order {order.exchange_order_id} for bot {bot.id}")
                     else:

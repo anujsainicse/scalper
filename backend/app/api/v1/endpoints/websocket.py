@@ -330,12 +330,16 @@ class ConnectionManager:
     ):
         """
         Process a cancelled order by stopping the bot
+        (ONLY if it's a manual cancellation, not system-initiated)
 
         When an order is cancelled on the exchange, we need to:
-        1. Update the order status to CANCELLED
-        2. Stop the bot (set status to STOPPED)
-        3. Log the activity
-        4. Send notification
+        1. Check if cancellation was system-initiated (UPDATE/STOP/DELETE)
+        2. If manual cancellation:
+           - Update the order status to CANCELLED
+           - Stop the bot (set status to STOPPED)
+           - Log the activity
+           - Send notification
+        3. If system-initiated: Just update order status, don't stop bot
 
         Args:
             exchange_order_id: The exchange order ID that was cancelled
@@ -366,10 +370,39 @@ class ConnectionManager:
                     return
 
                 logger.info(f"✅ [DB] Order found: {order.id}")
+                logger.info(f"🔍 [DB] Cancellation reason: {order.cancellation_reason}")
 
                 # Update order status to CANCELLED
                 order.status = OrderStatus.CANCELLED
                 logger.info(f"✅ [CANCELLED] Order status updated to CANCELLED")
+
+                # CHECK CANCELLATION REASON - Don't auto-stop for system cancellations
+                if order.cancellation_reason in ["UPDATE", "STOP", "DELETE"]:
+                    logger.info(f"ℹ️ ========== SYSTEM-INITIATED CANCELLATION ==========")
+                    logger.info(f"ℹ️ [CANCELLED] Reason: {order.cancellation_reason}")
+                    logger.info(f"ℹ️ [CANCELLED] This is expected - bot operation in progress")
+                    logger.info(f"ℹ️ [CANCELLED] Order marked as CANCELLED, bot will remain in current state")
+
+                    # Just commit the order status change
+                    await db.commit()
+
+                    # Log the system cancellation for audit trail
+                    log = ActivityLog(
+                        bot_id=order.bot_id,
+                        level="INFO",
+                        message=f"Order cancelled for {order.cancellation_reason.lower()} operation"
+                    )
+                    db.add(log)
+                    await db.commit()
+
+                    logger.info(f"✅ [CANCELLED] System cancellation processed, bot not affected")
+                    logger.info(f"✅ ==========================================================\n")
+                    return
+
+                # If no reason or other reason, this is a manual cancellation - proceed with auto-stop
+                logger.warning(f"⚠️ ========== MANUAL CANCELLATION DETECTED ==========")
+                logger.warning(f"⚠️ [CANCELLED] Reason: {order.cancellation_reason or 'None (manual)'}")
+                logger.warning(f"⚠️ [CANCELLED] Bot will be stopped automatically")
 
                 # Get the bot
                 logger.info(f"🔍 [DB] Fetching bot {order.bot_id}...")
