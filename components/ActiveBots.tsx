@@ -366,8 +366,14 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         </div>
         <div className="text-right">
           <p className="text-sm text-muted-foreground mb-1">Last Fill</p>
-          <p className="text-xl font-semibold text-foreground">
-            {bot.lastFillTime ? formatRelativeTime(bot.lastFillTime) : 'Never'}
+          <p className="text-xl font-semibold">
+            {bot.lastFillTime && bot.lastFillSide && bot.lastFillPrice ? (
+              <span className={bot.lastFillSide === 'BUY' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                {bot.lastFillSide}@{bot.lastFillPrice.toFixed(2)}
+              </span>
+            ) : (
+              <span className="text-foreground">Never</span>
+            )}
           </p>
         </div>
       </div>

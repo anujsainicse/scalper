@@ -160,6 +160,25 @@ class ConnectionManager:
             logger.info(f"   Pair: {order_data.get('pair')}")
             logger.info(f"   Side: {order_data.get('side')}")
 
+            # Query database to get bot_id for this order
+            bot_id = None
+            try:
+                from app.models.order import Order as OrderModel
+                from sqlalchemy import select
+
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(
+                        select(OrderModel).where(OrderModel.exchange_order_id == order_id)
+                    )
+                    order = result.scalar_one_or_none()
+                    if order:
+                        bot_id = str(order.bot_id)
+                        logger.info(f"📋 [ORDER INFO] Bot ID: {bot_id}")
+                    else:
+                        logger.warning(f"⚠️ [ORDER INFO] Order {order_id} not found in database")
+            except Exception as e:
+                logger.error(f"❌ [ERROR] Failed to query bot_id: {e}")
+
             # Create event message
             event = {
                 "id": str(uuid.uuid4()),
@@ -167,6 +186,7 @@ class ConnectionManager:
                 "type": "order",
                 "data": {
                     "id": order_id,
+                    "bot_id": bot_id,
                     "pair": order_data.get("pair"),
                     "side": order_data.get("side"),
                     "status": order_data.get("status"),

@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 import { Radio, WifiOff, RefreshCw, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/utils/formatters';
+import { useBotStore } from '@/store/botStore';
 
 interface WebSocketEvent {
   id: string;
@@ -17,6 +18,7 @@ interface WebSocketEvent {
 
 interface OrderUpdate {
   id: string;
+  bot_id?: string;
   pair: string;
   side: string;
   status: string;
@@ -59,6 +61,7 @@ export const WebSocketMonitor: React.FC = () => {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchBot = useBotStore((state) => state.fetchBot);
 
   const connectWebSocket = () => {
     try {
@@ -125,6 +128,14 @@ export const WebSocketMonitor: React.FC = () => {
             }
           }
 
+          // Filter out INITIAL order status (repetitive with OPEN)
+          if (data.type === 'order') {
+            if (data.data.status?.toLowerCase() === 'initial') {
+              console.log('📋 Skipping INITIAL order status');
+              return;
+            }
+          }
+
           // Deduplicate events based on data ID, type, and status (for orders)
           // Include status for orders to allow status updates (initial -> open -> cancelled)
           const eventKey = data.type === 'order'
@@ -152,6 +163,14 @@ export const WebSocketMonitor: React.FC = () => {
           setEvents([...eventHistory]);
 
           console.log('📡 Event received:', data.type, data.data);
+
+          // Update bot card if this is a filled order
+          if (data.type === 'order' &&
+              data.data.status?.toLowerCase() === 'filled' &&
+              data.data.bot_id) {
+            console.log(`🔄 Refreshing bot ${data.data.bot_id} after fill`);
+            fetchBot(data.data.bot_id);
+          }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }

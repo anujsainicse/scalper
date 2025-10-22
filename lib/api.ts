@@ -22,6 +22,8 @@ export interface Bot {
   pnl: number;
   total_trades: number;
   last_fill_time: string | null;
+  last_fill_side: OrderSide | null;
+  last_fill_price: number | null;
   created_at: string;
   updated_at: string;
   config: Record<string, any> | null;

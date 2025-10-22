@@ -104,8 +104,10 @@ async def process_order_fill(
                 logger.info(f"Bot {bot.id} is {bot.status.value}. Not placing opposite order.")
                 return False
 
-            # Update bot's last_fill_time
+            # Update bot's last fill details
             bot.last_fill_time = datetime.utcnow()
+            bot.last_fill_side = order.side
+            bot.last_fill_price = float(filled_price if filled_price else order.price)
 
             # Log the fill
             log = ActivityLog(

@@ -46,6 +46,8 @@ class Bot(Base):
     pnl = Column(Float, default=0.0)
     total_trades = Column(Integer, default=0)
     last_fill_time = Column(DateTime(timezone=True), nullable=True)
+    last_fill_side = Column(SQLEnum(OrderSide), nullable=True)
+    last_fill_price = Column(Float, nullable=True)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

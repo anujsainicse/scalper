@@ -14,6 +14,7 @@ interface BotStore {
 
   // Bot actions
   fetchBots: () => Promise<void>;
+  fetchBot: (botId: string) => Promise<void>;
   addBot: (formData: BotFormData) => Promise<void>;
   removeBot: (botId: string) => Promise<void>;
   updateBot: (botId: string, updates: Partial<ActiveBot>) => void;
@@ -45,6 +46,9 @@ const apiToActiveBot = (apiBot: ApiBot): ActiveBot => ({
   status: apiBot.status,
   createdAt: new Date(apiBot.created_at),
   updatedAt: new Date(apiBot.updated_at),
+  lastFillTime: apiBot.last_fill_time ? new Date(apiBot.last_fill_time) : undefined,
+  lastFillSide: apiBot.last_fill_side || undefined,
+  lastFillPrice: apiBot.last_fill_price || undefined,
   pnl: apiBot.pnl,
   totalTrades: apiBot.total_trades,
 });
@@ -79,6 +83,23 @@ export const useBotStore = create<BotStore>((set, get) => ({
         error: error instanceof Error ? error.message : 'Failed to fetch bots',
         isLoading: false
       });
+    }
+  },
+
+  // Fetch single bot from API and update in store
+  fetchBot: async (botId: string) => {
+    try {
+      const apiBot = await api.getBot(botId);
+      const updatedBot = apiToActiveBot(apiBot);
+
+      // Update only this bot in the array
+      set((state) => ({
+        bots: state.bots.map((bot) =>
+          bot.id === botId ? updatedBot : bot
+        ),
+      }));
+    } catch (error) {
+      console.error(`Failed to fetch bot ${botId}:`, error);
     }
   },
 

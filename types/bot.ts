@@ -28,6 +28,8 @@ export interface BotConfig {
 
 export interface ActiveBot extends BotConfig {
   lastFillTime?: Date;
+  lastFillSide?: OrderSide;
+  lastFillPrice?: number;
   pnl: number;
   totalTrades: number;
 }

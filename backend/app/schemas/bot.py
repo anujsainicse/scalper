@@ -71,6 +71,8 @@ class BotResponse(BotBase):
     pnl: float
     total_trades: int
     last_fill_time: Optional[datetime]
+    last_fill_side: Optional[OrderSide]
+    last_fill_price: Optional[float]
     created_at: datetime
     updated_at: datetime
 
