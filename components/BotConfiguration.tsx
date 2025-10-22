@@ -48,6 +48,24 @@ export const BotConfiguration: React.FC = () => {
   const [priceData, setPriceData] = useState<Record<string, any> | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [decimalPlaces, setDecimalPlaces] = useState<number>(2);
+  const [countdown, setCountdown] = useState<number>(0);
+
+  // Handle countdown timer
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [countdown]);
 
   // Load bot data when editing
   // Only reload when editingBotId changes, not when bots array updates (every 5 seconds)
@@ -211,10 +229,12 @@ export const BotConfiguration: React.FC = () => {
         // Update existing bot
         await updateBotFromForm(editingBotId, formattedData);
         toast.success(`✅ Bot updated for ${formattedData.ticker}`);
+        setCountdown(3); // Start countdown to prevent duplicate updates
       } else {
         // Create new bot
         await addBot(formattedData);
         toast.success(`✅ Bot created for ${formattedData.ticker}`);
+        setCountdown(3); // Start countdown to prevent duplicate creations
       }
 
       // Calculate default prices if price data is available
@@ -675,9 +695,22 @@ export const BotConfiguration: React.FC = () => {
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700">
+            <Button
+              type="submit"
+              className={`flex-1 ${
+                editingBotId
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : formData.firstOrder === 'BUY'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+              }`}
+              disabled={countdown > 0}
+            >
               <Rocket className="mr-2 h-4 w-4" />
-              {editingBotId ? 'Update Bot' : 'Start Bot'}
+              {countdown > 0
+                ? `Wait ${countdown}s...`
+                : (editingBotId ? 'Update Bot' : 'Start Bot')
+              }
             </Button>
             {editingBotId && (
               <Button
