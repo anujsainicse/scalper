@@ -299,12 +299,20 @@ async def update_bot(
             cancelled_count = 0
 
             # Cancel all pending orders
+            # CRITICAL: Set cancellation_reason BEFORE calling exchange API to avoid race condition
             for order in pending_orders:
                 try:
-                    logger.info(f"[UPDATE-BOT] Cancelling order {order.exchange_order_id}")
-                    await exchange.cancel_order(order.exchange_order_id, bot.ticker)
+                    logger.info(f"[UPDATE-BOT] Marking order {order.exchange_order_id} for UPDATE cancellation")
+                    # Set cancellation reason FIRST (before exchange call)
+                    order.cancellation_reason = "UPDATE"
                     order.status = DBOrderStatus.CANCELLED
-                    order.cancellation_reason = "UPDATE"  # Mark as update-initiated cancellation
+                    # Commit to database BEFORE calling exchange API
+                    await db.flush()
+                    logger.info(f"[UPDATE-BOT] Cancellation reason committed to database")
+
+                    # Now cancel on exchange (this will trigger WebSocket event)
+                    logger.info(f"[UPDATE-BOT] Cancelling order {order.exchange_order_id} on exchange")
+                    await exchange.cancel_order(order.exchange_order_id, bot.ticker)
                     cancelled_count += 1
                     logger.info(f"[UPDATE-BOT] Order {order.exchange_order_id} cancelled successfully")
                 except Exception as cancel_error:
@@ -487,31 +495,31 @@ async def delete_bot(
             for order in open_orders:
                 try:
                     logger.info(f"[DELETE-BOT] Attempting to cancel order {order.exchange_order_id}")
-                    # Cancel on exchange
+
+                    # Set cancellation reason FIRST (before exchange call) to avoid race condition
+                    order.cancellation_reason = "DELETE"
+                    order.status = DBOrderStatus.CANCELLED
+                    # Commit to database BEFORE calling exchange API
+                    await db.flush()
+                    logger.info(f"[DELETE-BOT] Cancellation reason committed for order {order.exchange_order_id}")
+
+                    # Cancel on exchange (this will trigger WebSocket event)
                     success = await exchange_adapter.cancel_order(
                         order_id=order.exchange_order_id,
                         symbol=order.symbol
                     )
 
                     if success:
-                        # Update order status in database
-                        order.status = DBOrderStatus.CANCELLED
-                        order.cancellation_reason = "DELETE"  # Mark as delete-initiated cancellation
                         cancelled_count += 1
                         logger.info(f"[DELETE-BOT] Successfully cancelled order {order.exchange_order_id}")
                     else:
-                        # Order might already be cancelled on exchange - mark as cancelled anyway
-                        logger.warning(f"[DELETE-BOT] Exchange returned false for order {order.exchange_order_id}, marking as cancelled")
-                        order.status = DBOrderStatus.CANCELLED
-                        order.cancellation_reason = "DELETE"  # Mark as delete-initiated cancellation
+                        # Order might already be cancelled on exchange
+                        logger.warning(f"[DELETE-BOT] Exchange returned false for order {order.exchange_order_id}")
 
                 except Exception as e:
                     # Order might have been manually cancelled on exchange
                     logger.warning(f"[DELETE-BOT] Could not cancel order {order.exchange_order_id}: {e}")
-                    logger.info(f"[DELETE-BOT] Marking order {order.exchange_order_id} as cancelled in database")
-                    # Mark as cancelled in database even if exchange call failed
-                    order.status = DBOrderStatus.CANCELLED
-                    order.cancellation_reason = "DELETE"  # Mark as delete-initiated cancellation
+                    logger.info(f"[DELETE-BOT] Order already marked as cancelled in database")
 
             await db.flush()
 
@@ -680,13 +688,17 @@ async def stop_bot(
 
             for order in pending_orders:
                 try:
-                    # Cancel order on exchange
+                    # Set cancellation reason FIRST (before exchange call) to avoid race condition
+                    order.cancellation_reason = "STOP"
+                    order.status = DBOrderStatus.CANCELLED
+                    # Commit to database BEFORE calling exchange API
+                    await db.flush()
+                    logger.info(f"Cancellation reason committed for order {order.exchange_order_id}")
+
+                    # Cancel order on exchange (this will trigger WebSocket event)
                     success = await exchange.cancel_order(order.exchange_order_id, order.symbol)
 
                     if success:
-                        # Update order status in database
-                        order.status = DBOrderStatus.CANCELLED
-                        order.cancellation_reason = "STOP"  # Mark as stop-initiated cancellation
                         cancelled_count += 1
                         logger.info(f"Cancelled order {order.exchange_order_id} for bot {bot.id}")
                     else:
