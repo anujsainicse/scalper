@@ -53,7 +53,7 @@ export default function Home() {
       </div>
 
       {/* Bottom Panel - Activity Log, Orders & WebSocket Tabs */}
-      <div className="mt-6 h-[280px]">
+      <div className="mt-6 h-[500px]">
         <div className="flex gap-3 mb-3">
           <Button
             variant={activeBottomTab === 'logs' ? 'default' : 'outline'}
