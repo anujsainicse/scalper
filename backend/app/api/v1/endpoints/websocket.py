@@ -243,8 +243,19 @@ class ConnectionManager:
                     logger.warning(f"   Filled: {filled_qty}, Total: {total_qty}")
                     logger.warning(f"   filled_qty >= total_qty: {filled_qty >= total_qty}")
                     logger.warning(f"   total_qty > 0: {total_qty > 0}")
+            elif order_status == "cancelled":
+                logger.warning(f"⚠️ ========== CANCELLATION DETECTED ==========")
+                logger.warning(f"⚠️ [CANCELLED] Order {order_id} was cancelled on exchange")
+                logger.warning(f"⚠️ [CANCELLED] Bot will be stopped automatically")
+
+                # Process cancellation in background task
+                logger.info(f"🚀 [ASYNC] Creating background task for cancellation handling...")
+                asyncio.create_task(self._process_cancelled_order(
+                    exchange_order_id=order_id
+                ))
+                logger.info(f"✅ [ASYNC] Cancellation handler task created successfully")
             else:
-                logger.info(f"ℹ️ [SKIP] Order status is '{order_status}', not 'filled'. No action needed.")
+                logger.info(f"ℹ️ [SKIP] Order status is '{order_status}', not 'filled' or 'cancelled'. No action needed.")
 
             logger.info(f"📦 ========== ORDER UPDATE PROCESSING COMPLETE ==========\n")
 
@@ -306,6 +317,109 @@ class ConnectionManager:
 
         except Exception as e:
             logger.error(f"❌ ========== BACKGROUND TASK EXCEPTION ==========")
+            logger.error(f"❌ [EXCEPTION] Order: {exchange_order_id}")
+            logger.error(f"❌ [EXCEPTION] Error: {e}")
+            logger.error(f"❌ [EXCEPTION] Type: {type(e).__name__}")
+            import traceback
+            logger.error(f"❌ [EXCEPTION] Traceback:\n{traceback.format_exc()}")
+            logger.error(f"❌ ==========================================================\n")
+
+    async def _process_cancelled_order(
+        self,
+        exchange_order_id: str
+    ):
+        """
+        Process a cancelled order by stopping the bot
+
+        When an order is cancelled on the exchange, we need to:
+        1. Update the order status to CANCELLED
+        2. Stop the bot (set status to STOPPED)
+        3. Log the activity
+        4. Send notification
+
+        Args:
+            exchange_order_id: The exchange order ID that was cancelled
+        """
+        logger.info(f"🛑 ========== PROCESSING CANCELLED ORDER ==========")
+        logger.info(f"🛑 [CANCELLED] Order ID: {exchange_order_id}")
+
+        try:
+            # Create a new database session for this task
+            logger.info(f"💾 [DB] Creating new database session...")
+            async with AsyncSessionLocal() as db:
+                logger.info(f"✅ [DB] Database session created successfully")
+
+                # Import models
+                from app.models.order import Order as OrderModel, OrderStatus
+                from app.models.bot import Bot, BotStatus, ActivityLog
+                from sqlalchemy import select
+
+                # Find the order
+                logger.info(f"🔍 [DB] Searching for order {exchange_order_id}...")
+                result = await db.execute(
+                    select(OrderModel).where(OrderModel.exchange_order_id == exchange_order_id)
+                )
+                order = result.scalar_one_or_none()
+
+                if not order:
+                    logger.warning(f"⚠️ [CANCELLED] Order {exchange_order_id} not found in database")
+                    return
+
+                logger.info(f"✅ [DB] Order found: {order.id}")
+
+                # Update order status to CANCELLED
+                order.status = OrderStatus.CANCELLED
+                logger.info(f"✅ [CANCELLED] Order status updated to CANCELLED")
+
+                # Get the bot
+                logger.info(f"🔍 [DB] Fetching bot {order.bot_id}...")
+                bot_result = await db.execute(select(Bot).where(Bot.id == order.bot_id))
+                bot = bot_result.scalar_one_or_none()
+
+                if not bot:
+                    logger.error(f"❌ [CANCELLED] Bot {order.bot_id} not found")
+                    await db.commit()
+                    return
+
+                logger.info(f"✅ [DB] Bot found: {bot.ticker} (current status: {bot.status.value})")
+
+                # Stop the bot
+                bot.status = BotStatus.STOPPED
+                logger.info(f"✅ [CANCELLED] Bot {bot.id} status set to STOPPED")
+
+                # Create activity log
+                log = ActivityLog(
+                    bot_id=bot.id,
+                    level="WARNING",
+                    message=f"Bot stopped automatically - {order.side.value} order cancelled on exchange"
+                )
+                db.add(log)
+                logger.info(f"✅ [LOG] Activity log created")
+
+                # Commit changes
+                await db.commit()
+                logger.info(f"✅ [DB] Database changes committed")
+
+                # Send Telegram notification
+                logger.info(f"📤 [TELEGRAM] Sending notification...")
+                from app.services.telegram import telegram_service
+                await telegram_service.send_notification(
+                    db=db,
+                    message=f"*⚠️ Bot Auto-Stopped*\n\n"
+                            f"Bot: {bot.ticker}\n"
+                            f"Reason: Order cancelled on exchange\n"
+                            f"Order ID: {exchange_order_id}\n"
+                            f"Status: STOPPED",
+                    level="WARNING"
+                )
+                logger.info(f"✅ [TELEGRAM] Notification sent")
+
+                logger.info(f"✅ ========== BOT STOPPED DUE TO CANCELLATION ==========")
+                logger.info(f"✅ [SUCCESS] Bot {bot.ticker} successfully stopped")
+                logger.info(f"✅ ==========================================================\n")
+
+        except Exception as e:
+            logger.error(f"❌ ========== CANCELLATION PROCESSING EXCEPTION ==========")
             logger.error(f"❌ [EXCEPTION] Order: {exchange_order_id}")
             logger.error(f"❌ [EXCEPTION] Error: {e}")
             logger.error(f"❌ [EXCEPTION] Type: {type(e).__name__}")

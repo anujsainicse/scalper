@@ -279,10 +279,6 @@ async def complete_trading_cycle(
             level="SUCCESS" if pnl >= 0 else "WARNING"
         )
 
-        # If infinite loop is enabled, start a new cycle
-        if bot.infinite_loop and bot.status == BotStatus.ACTIVE:
-            await start_new_cycle(bot, db)
-
         await db.commit()
 
     except Exception as e:
@@ -321,50 +317,3 @@ async def calculate_cycle_pnl(buy_order: Order, sell_order: Order) -> float:
     )
 
     return net_pnl
-
-
-async def start_new_cycle(bot: Bot, db: AsyncSession) -> None:
-    """
-    Start a new trading cycle for infinite loop bots
-
-    Args:
-        bot: The bot to start a new cycle for
-        db: Database session
-    """
-    try:
-        logger.info(f"Starting new trading cycle for bot {bot.id} (infinite loop)")
-
-        # Place order for the bot's first_order side
-        order_side = bot.first_order
-        order_price = bot.buy_price if order_side == BotOrderSide.BUY else bot.sell_price
-
-        new_order = await place_order_for_bot(
-            bot=bot,
-            side=order_side,
-            price=order_price,
-            db=db
-        )
-
-        if new_order:
-            log = ActivityLog(
-                bot_id=bot.id,
-                level="INFO",
-                message=f"New cycle started: {order_side.value} order placed at ${order_price}"
-            )
-            db.add(log)
-
-            await db.commit()
-
-            logger.info(f"New cycle started successfully for bot {bot.id}")
-
-    except Exception as e:
-        logger.error(f"Failed to start new cycle for bot {bot.id}: {e}")
-        await db.rollback()
-        # Log error but don't raise - bot can be restarted manually
-        log = ActivityLog(
-            bot_id=bot.id,
-            level="ERROR",
-            message=f"Failed to start new cycle: {str(e)}"
-        )
-        db.add(log)
-        await db.commit()

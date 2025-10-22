@@ -2,6 +2,18 @@
 
 FastAPI-based backend for the cryptocurrency scalping bot dashboard.
 
+## 🆕 Recent Updates (2025-01-22)
+
+**Version 1.1.0** - Critical bug fixes and enhancements:
+
+- 🐛 **Fixed**: Infinite loop duplicate buy order bug - eliminated redundant order placement
+- 🐛 **Fixed**: Bots now automatically stop when orders are cancelled on exchange
+- ✨ **Enhanced**: WebSocket handler now detects and processes order cancellations
+- 📝 **Added**: Comprehensive documentation (STATUS.md, FIXES.md)
+- 🔔 **Improved**: Telegram notifications for auto-stop events
+
+See [FIXES.md](FIXES.md) for detailed bug fix documentation and [STATUS.md](STATUS.md) for project status.
+
 ## Features
 
 - **FastAPI Framework**: Modern, fast, async web framework
