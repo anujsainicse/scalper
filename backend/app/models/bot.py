@@ -37,7 +37,7 @@ class Bot(Base):
     sell_price = Column(Float, nullable=False)
     trailing_percent = Column(Float, nullable=True)
     leverage = Column(Integer, default=3)
-    infinite_loop = Column(Boolean, default=False)
+    infinite_loop = Column(Boolean, default=True)
 
     # Bot Status
     status = Column(SQLEnum(BotStatus), default=BotStatus.STOPPED, index=True)

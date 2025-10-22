@@ -39,7 +39,7 @@ class BotBase(BaseModel):
     sell_price: float = Field(..., gt=0)
     trailing_percent: Optional[float] = Field(None, ge=0.1, le=3.0)
     leverage: Optional[int] = Field(3, ge=1, le=50)
-    infinite_loop: bool = False
+    infinite_loop: bool = True
 
     @validator('sell_price')
     def sell_must_be_greater_than_buy(cls, v, values):
