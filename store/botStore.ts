@@ -11,6 +11,7 @@ interface BotStore {
   editingBotId: string | null;
   isLoading: boolean;
   error: string | null;
+  layoutMode: 'grid' | 'column';
 
   // Bot actions
   fetchBots: () => Promise<void>;
@@ -30,6 +31,9 @@ interface BotStore {
 
   // Telegram action
   toggleTelegram: () => void;
+
+  // Layout action
+  setLayoutMode: (mode: 'grid' | 'column') => void;
 }
 
 // Helper to convert API bot to ActiveBot
@@ -70,6 +74,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
   editingBotId: null,
   isLoading: false,
   error: null,
+  layoutMode: (typeof window !== 'undefined' && localStorage.getItem('botLayoutMode') as 'grid' | 'column') || 'grid',
 
   // Fetch bots from API
   fetchBots: async () => {
@@ -322,5 +327,13 @@ export const useBotStore = create<BotStore>((set, get) => ({
         ...state.activityLogs,
       ],
     }));
+  },
+
+  // Layout action
+  setLayoutMode: (mode: 'grid' | 'column') => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('botLayoutMode', mode);
+    }
+    set({ layoutMode: mode });
   },
 }));

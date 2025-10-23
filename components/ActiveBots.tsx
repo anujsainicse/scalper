@@ -18,6 +18,8 @@ import {
   TrendingDown,
   Activity,
   Edit,
+  Grid3x3,
+  List,
 } from 'lucide-react';
 
 type BotFilter = 'all' | 'active' | 'stopped';
@@ -28,6 +30,8 @@ export const ActiveBots: React.FC = () => {
   const removeBot = useBotStore((state) => state.removeBot);
   const stopAllBots = useBotStore((state) => state.stopAllBots);
   const setEditingBot = useBotStore((state) => state.setEditingBot);
+  const layoutMode = useBotStore((state) => state.layoutMode);
+  const setLayoutMode = useBotStore((state) => state.setLayoutMode);
 
   const [deletingBot, setDeletingBot] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<BotFilter>('all');
@@ -157,9 +161,31 @@ export const ActiveBots: React.FC = () => {
             </button>
           </div>
 
+          {/* Layout Toggle Buttons */}
+          <div className="flex gap-1 ml-auto mr-2">
+            <Button
+              size="sm"
+              variant={layoutMode === 'grid' ? 'default' : 'ghost'}
+              onClick={() => setLayoutMode('grid')}
+              className="h-8 w-8 p-0"
+              title="Grid View"
+            >
+              <Grid3x3 className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={layoutMode === 'column' ? 'default' : 'ghost'}
+              onClick={() => setLayoutMode('column')}
+              className="h-8 w-8 p-0"
+              title="List View"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+
           {/* Stop All Button */}
           {activeBots.length > 0 && (
-            <Button variant="destructive" size="sm" onClick={handleStopAll} className="ml-4">
+            <Button variant="destructive" size="sm" onClick={handleStopAll}>
               <AlertTriangle className="mr-2 h-4 w-4" />
               Stop All
             </Button>
@@ -190,7 +216,10 @@ export const ActiveBots: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className={layoutMode === 'grid'
+            ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'
+            : 'flex flex-col gap-3'
+          }>
             {filteredBots.map((bot) => (
               <BotCard
                 key={bot.id}
@@ -199,6 +228,7 @@ export const ActiveBots: React.FC = () => {
                 onDelete={() => handleDeleteBot(bot.id)}
                 onEdit={() => setEditingBot(bot.id)}
                 isDeleting={deletingBot === bot.id}
+                layoutMode={layoutMode}
               />
             ))}
           </div>
@@ -214,9 +244,10 @@ interface BotCardProps {
   onDelete: () => void;
   onEdit: () => void;
   isDeleting: boolean;
+  layoutMode: 'grid' | 'column';
 }
 
-const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDeleting }) => {
+const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDeleting, layoutMode }) => {
   const [livePrice, setLivePrice] = React.useState<number | null>(null);
   const [priceChange, setPriceChange] = React.useState<number>(0);
   const updateBot = useBotStore((state) => state.updateBot);
@@ -311,6 +342,90 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
     ? Math.max(0, Math.min(100, ((livePrice - bot.buyPrice) / (bot.sellPrice - bot.buyPrice)) * 100))
     : 50;
 
+  // Column layout (horizontal)
+  if (layoutMode === 'column') {
+    return (
+      <div className="bg-card border border-border rounded-xl p-4 hover:border-muted-foreground/50 transition-all duration-300 shadow-lg flex items-center gap-4">
+        {/* Status Badge */}
+        <Badge
+          variant="secondary"
+          className={`px-2 py-1 text-xs font-bold shrink-0 ${
+            isActive
+              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 border-green-300 dark:border-green-500/30'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-300 dark:border-amber-500/30'
+          }`}
+        >
+          {bot.status}
+        </Badge>
+
+        {/* Bot Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-bold text-foreground">{bot.ticker}</h3>
+            <span className="text-sm text-muted-foreground">|</span>
+            <span className="text-sm text-muted-foreground">{bot.exchange}</span>
+            <span className="text-sm text-muted-foreground">|</span>
+            <span className="text-sm text-green-600 dark:text-green-400 font-semibold">Buy@{bot.buyPrice.toFixed(2)}</span>
+            <span className="text-sm text-red-600 dark:text-red-400 font-semibold">Sell@{bot.sellPrice.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center gap-4 mt-1 text-sm">
+            <span className={`font-semibold ${bot.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {pnlFormatted.text}
+            </span>
+            <span className="text-muted-foreground">Trades: {bot.totalTrades}</span>
+            {bot.lastFillTime && bot.lastFillSide && bot.lastFillPrice && (
+              <span className={bot.lastFillSide === 'BUY' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                Last: {bot.lastFillSide}@{bot.lastFillPrice.toFixed(2)}
+              </span>
+            )}
+            {bot.infiniteLoop && (
+              <span className="text-blue-500 dark:text-blue-400 text-xs">♾️ Loop</span>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 shrink-0">
+          <Button
+            onClick={onToggle}
+            size="sm"
+            className={`h-9 px-4 font-semibold transition-all ${
+              isActive
+                ? 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white border border-gray-300 dark:border-zinc-600'
+                : 'bg-green-600 hover:bg-green-500 text-white'
+            }`}
+          >
+            {isActive ? <Square className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
+            {isActive ? 'Stop' : 'Start'}
+          </Button>
+          <Button
+            onClick={onEdit}
+            size="sm"
+            variant="outline"
+            className="h-9 px-4 font-semibold bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100"
+          >
+            <Edit className="mr-1.5 h-4 w-4" />
+            Edit
+          </Button>
+          <Button
+            onClick={onDelete}
+            size="sm"
+            variant="outline"
+            className={`h-9 px-4 font-semibold transition-all ${
+              isDeleting
+                ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
+                : 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100'
+            }`}
+          >
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            {isDeleting ? 'Yes' : 'Delete'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Grid layout (vertical - original)
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:border-muted-foreground/50 transition-all duration-300 shadow-xl">
       {/* Header */}
@@ -382,39 +497,20 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
       <div className="grid grid-cols-3 gap-3 mb-4">
         <Button
           onClick={onToggle}
-          variant="outline"
-          aria-label={isActive ? 'Stop bot' : 'Start bot'}
-          className={`
-            h-14 text-base font-semibold
-            flex items-center justify-center gap-2
-            transition-all duration-200 ease-in-out
-            hover:-translate-y-0.5
-            active:scale-[0.98]
-            focus:outline-none focus:ring-2 focus:ring-offset-2
-            ${
-              isActive
-                ? `bg-amber-50 dark:bg-amber-500/10
-                   border border-amber-200/50 dark:border-amber-500/30
-                   text-amber-600 dark:text-amber-400
-                   hover:bg-amber-100 dark:hover:bg-amber-500/20
-                   hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-400/20
-                   focus:ring-amber-500 dark:focus:ring-offset-zinc-900`
-                : `bg-green-600 hover:bg-green-500
-                   text-white shadow-lg shadow-green-500/20
-                   border-green-600
-                   hover:shadow-green-500/30
-                   focus:ring-green-500 dark:focus:ring-offset-zinc-900`
-            }
-          `}
+          className={`h-14 text-base font-semibold transition-all duration-300 ${
+            isActive
+              ? 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white border border-gray-300 dark:border-zinc-600'
+              : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
+          }`}
         >
           {isActive ? (
             <>
-              <Square className="w-5 h-5" />
+              <Square className="mr-2 h-5 w-5" />
               Stop
             </>
           ) : (
             <>
-              <Play className="w-5 h-5" />
+              <Play className="mr-2 h-5 w-5" />
               Start
             </>
           )}
@@ -422,53 +518,21 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         <Button
           onClick={onEdit}
           variant="outline"
-          aria-label="Edit bot configuration"
-          className="
-            h-14 text-base font-semibold
-            bg-blue-50 dark:bg-blue-500/10
-            border border-blue-200/50 dark:border-blue-500/30
-            text-blue-600 dark:text-blue-400
-            hover:bg-blue-100 dark:hover:bg-blue-500/20
-            hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-400/20
-            hover:-translate-y-0.5
-            active:scale-[0.98]
-            transition-all duration-200 ease-in-out
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-            dark:focus:ring-offset-zinc-900
-            flex items-center justify-center gap-2
-          "
+          className="h-14 text-base font-semibold bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100"
         >
-          <Edit className="w-5 h-5" />
+          <Edit className="mr-2 h-5 w-5" />
           Edit
         </Button>
         <Button
           onClick={onDelete}
           variant="outline"
-          aria-label={isDeleting ? 'Confirm delete bot' : 'Delete bot'}
-          className={`
-            h-14 text-base font-semibold
-            flex items-center justify-center gap-2
-            transition-all duration-200 ease-in-out
-            hover:-translate-y-0.5
-            active:scale-[0.98]
-            focus:outline-none focus:ring-2 focus:ring-offset-2
-            ${
-              isDeleting
-                ? `bg-red-600 hover:bg-red-500
-                   text-white border-red-500
-                   shadow-lg shadow-red-500/30
-                   hover:shadow-red-500/40
-                   focus:ring-red-500 dark:focus:ring-offset-zinc-900`
-                : `bg-red-50 dark:bg-red-500/10
-                   border border-red-200/50 dark:border-red-500/30
-                   text-red-600 dark:text-red-400
-                   hover:bg-red-100 dark:hover:bg-red-500/20
-                   hover:shadow-lg hover:shadow-red-200/50 dark:hover:shadow-red-400/20
-                   focus:ring-red-500 dark:focus:ring-offset-zinc-900`
-            }
-          `}
+          className={`h-14 text-base font-semibold transition-all ${
+            isDeleting
+              ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
+              : 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100'
+          }`}
         >
-          <Trash2 className="w-5 h-5" />
+          <Trash2 className="mr-1 h-5 w-5" />
           {isDeleting ? 'Yes' : 'Delete'}
         </Button>
       </div>
