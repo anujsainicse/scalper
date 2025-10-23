@@ -384,7 +384,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
           onClick={onToggle}
           className={`h-14 text-base font-semibold transition-all duration-300 ${
             isActive
-              ? 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600'
+              ? 'bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-500'
               : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
           }`}
         >
@@ -402,19 +402,17 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         </Button>
         <Button
           onClick={onEdit}
-          variant="outline"
-          className="h-14 text-base font-semibold bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-100"
+          className="h-14 text-base font-semibold bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-white"
         >
           <Edit className="mr-2 h-5 w-5" />
           Edit
         </Button>
         <Button
           onClick={onDelete}
-          variant="outline"
           className={`h-14 text-base font-semibold transition-all ${
             isDeleting
-              ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
-              : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-100'
+              ? 'bg-red-600 hover:bg-red-500 text-white border border-red-500'
+              : 'bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-white'
           }`}
         >
           <Trash2 className="mr-1 h-5 w-5" />
