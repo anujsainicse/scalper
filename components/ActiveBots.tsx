@@ -345,81 +345,117 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
   // Column layout (horizontal)
   if (layoutMode === 'column') {
     return (
-      <div className="bg-card border border-border rounded-xl p-4 hover:border-muted-foreground/50 transition-all duration-300 shadow-lg flex items-center gap-4">
-        {/* Status Badge */}
-        <Badge
-          variant="secondary"
-          className={`px-2 py-1 text-xs font-bold shrink-0 ${
-            isActive
-              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 border-green-300 dark:border-green-500/30'
-              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-300 dark:border-amber-500/30'
-          }`}
-        >
-          {bot.status}
-        </Badge>
+      <div className="bg-card border border-border rounded-xl p-4 hover:border-muted-foreground/50 transition-all duration-300 shadow-lg">
+        <div className="flex items-center gap-4">
+          {/* Status Badge */}
+          <Badge
+            variant="secondary"
+            className={`px-2 py-1 text-xs font-bold shrink-0 ${
+              isActive
+                ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 border-green-300 dark:border-green-500/30'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-300 dark:border-amber-500/30'
+            }`}
+          >
+            {bot.status}
+          </Badge>
 
-        {/* Bot Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-bold text-foreground">{bot.ticker}</h3>
-            <span className="text-sm text-muted-foreground">|</span>
-            <span className="text-sm text-muted-foreground">{bot.exchange}</span>
-            <span className="text-sm text-muted-foreground">|</span>
-            <span className="text-sm text-green-600 dark:text-green-400 font-semibold">Buy@{bot.buyPrice.toFixed(2)}</span>
-            <span className="text-sm text-red-600 dark:text-red-400 font-semibold">Sell@{bot.sellPrice.toFixed(2)}</span>
-          </div>
-          <div className="flex items-center gap-4 mt-1 text-sm">
-            <span className={`font-semibold ${bot.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {pnlFormatted.text}
-            </span>
-            <span className="text-muted-foreground">Trades: {bot.totalTrades}</span>
-            {bot.lastFillTime && bot.lastFillSide && bot.lastFillPrice && (
-              <span className={bot.lastFillSide === 'BUY' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                Last: {bot.lastFillSide}@{bot.lastFillPrice.toFixed(2)}
+          {/* Bot Info - Main Row */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1.5">
+              <h3 className="text-lg font-bold text-foreground">{bot.ticker}</h3>
+              <span className="text-sm text-muted-foreground">•</span>
+              <span className="text-sm text-muted-foreground">{bot.exchange}</span>
+              <span className="text-sm text-muted-foreground">•</span>
+              <span className="text-sm text-muted-foreground">Qty: <span className="font-semibold text-foreground">{bot.quantity}</span></span>
+              <span className="text-sm text-muted-foreground">•</span>
+              <span className="text-sm text-green-600 dark:text-green-400 font-semibold">Buy@{bot.buyPrice.toFixed(2)}</span>
+              <span className="text-sm text-red-600 dark:text-red-400 font-semibold">Sell@{bot.sellPrice.toFixed(2)}</span>
+              {livePrice && (
+                <>
+                  <span className="text-sm text-muted-foreground">•</span>
+                  <span className={`text-sm font-semibold ${priceChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    LTP: {livePrice.toFixed(2)}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Second Row - Details */}
+            <div className="flex items-center gap-3 text-sm">
+              <span className={`font-semibold ${bot.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {pnlFormatted.text}
               </span>
-            )}
-            {bot.infiniteLoop && (
-              <span className="text-blue-500 dark:text-blue-400 text-xs">♾️ Loop</span>
-            )}
+              <span className="text-muted-foreground">•</span>
+              <span className="text-muted-foreground">Trades: <span className="font-medium text-foreground">{bot.totalTrades}</span></span>
+              <span className="text-muted-foreground">•</span>
+              {bot.lastFillTime && bot.lastFillSide && bot.lastFillPrice ? (
+                <span className={bot.lastFillSide === 'BUY' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                  Last: {bot.lastFillSide}@{bot.lastFillPrice.toFixed(2)} ({formatRelativeTime(bot.lastFillTime)})
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Last: <span className="text-foreground">Never</span></span>
+              )}
+              {bot.infiniteLoop && (
+                <>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-blue-500 dark:text-blue-400 text-xs font-medium">♾️ Loop</span>
+                </>
+              )}
+              {bot.trailingPercent && (
+                <>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-muted-foreground text-xs">Trailing: <span className="text-foreground font-medium">{bot.trailingPercent}%</span></span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 shrink-0">
+            <Button
+              onClick={onToggle}
+              size="sm"
+              className={`h-9 px-4 font-semibold transition-all ${
+                isActive
+                  ? 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white border border-gray-300 dark:border-zinc-600'
+                  : 'bg-green-600 hover:bg-green-500 text-white'
+              }`}
+            >
+              {isActive ? <Square className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
+              {isActive ? 'Stop' : 'Start'}
+            </Button>
+            <Button
+              onClick={onEdit}
+              size="sm"
+              variant="outline"
+              className="h-9 px-4 font-semibold bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100"
+            >
+              <Edit className="mr-1.5 h-4 w-4" />
+              Edit
+            </Button>
+            <Button
+              onClick={onDelete}
+              size="sm"
+              variant="outline"
+              className={`h-9 px-4 font-semibold transition-all ${
+                isDeleting
+                  ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
+                  : 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100'
+              }`}
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              {isDeleting ? 'Yes' : 'Delete'}
+            </Button>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 shrink-0">
-          <Button
-            onClick={onToggle}
-            size="sm"
-            className={`h-9 px-4 font-semibold transition-all ${
-              isActive
-                ? 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white border border-gray-300 dark:border-zinc-600'
-                : 'bg-green-600 hover:bg-green-500 text-white'
-            }`}
-          >
-            {isActive ? <Square className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
-            {isActive ? 'Stop' : 'Start'}
-          </Button>
-          <Button
-            onClick={onEdit}
-            size="sm"
-            variant="outline"
-            className="h-9 px-4 font-semibold bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100"
-          >
-            <Edit className="mr-1.5 h-4 w-4" />
-            Edit
-          </Button>
-          <Button
-            onClick={onDelete}
-            size="sm"
-            variant="outline"
-            className={`h-9 px-4 font-semibold transition-all ${
-              isDeleting
-                ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
-                : 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100'
-            }`}
-          >
-            <Trash2 className="mr-1.5 h-4 w-4" />
-            {isDeleting ? 'Yes' : 'Delete'}
-          </Button>
+        {/* Price Proximity Bar - Compact Version */}
+        <div className="mt-3">
+          <PriceProximityBar
+            buyPrice={bot.buyPrice}
+            sellPrice={bot.sellPrice}
+            currentPrice={livePrice || (bot.buyPrice + bot.sellPrice) / 2}
+          />
         </div>
       </div>
     );
