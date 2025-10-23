@@ -382,40 +382,93 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
       <div className="grid grid-cols-3 gap-3 mb-4">
         <Button
           onClick={onToggle}
-          className={`h-14 text-base font-semibold transition-all duration-300 ${
-            isActive
-              ? 'bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-500'
-              : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
-          }`}
+          variant="outline"
+          aria-label={isActive ? 'Stop bot' : 'Start bot'}
+          className={`
+            h-14 text-base font-semibold
+            flex items-center justify-center gap-2
+            transition-all duration-200 ease-in-out
+            hover:-translate-y-0.5
+            active:scale-[0.98]
+            focus:outline-none focus:ring-2 focus:ring-offset-2
+            ${
+              isActive
+                ? `bg-amber-50 dark:bg-amber-500/10
+                   border border-amber-200/50 dark:border-amber-500/30
+                   text-amber-600 dark:text-amber-400
+                   hover:bg-amber-100 dark:hover:bg-amber-500/20
+                   hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-amber-400/20
+                   focus:ring-amber-500 dark:focus:ring-offset-zinc-900`
+                : `bg-green-600 hover:bg-green-500
+                   text-white shadow-lg shadow-green-500/20
+                   border-green-600
+                   hover:shadow-green-500/30
+                   focus:ring-green-500 dark:focus:ring-offset-zinc-900`
+            }
+          `}
         >
           {isActive ? (
             <>
-              <Square className="mr-2 h-5 w-5" />
+              <Square className="w-5 h-5" />
               Stop
             </>
           ) : (
             <>
-              <Play className="mr-2 h-5 w-5" />
+              <Play className="w-5 h-5" />
               Start
             </>
           )}
         </Button>
         <Button
           onClick={onEdit}
-          className="h-14 text-base font-semibold bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-white"
+          variant="outline"
+          aria-label="Edit bot configuration"
+          className="
+            h-14 text-base font-semibold
+            bg-blue-50 dark:bg-blue-500/10
+            border border-blue-200/50 dark:border-blue-500/30
+            text-blue-600 dark:text-blue-400
+            hover:bg-blue-100 dark:hover:bg-blue-500/20
+            hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-blue-400/20
+            hover:-translate-y-0.5
+            active:scale-[0.98]
+            transition-all duration-200 ease-in-out
+            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+            dark:focus:ring-offset-zinc-900
+            flex items-center justify-center gap-2
+          "
         >
-          <Edit className="mr-2 h-5 w-5" />
+          <Edit className="w-5 h-5" />
           Edit
         </Button>
         <Button
           onClick={onDelete}
-          className={`h-14 text-base font-semibold transition-all ${
-            isDeleting
-              ? 'bg-red-600 hover:bg-red-500 text-white border border-red-500'
-              : 'bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-white'
-          }`}
+          variant="outline"
+          aria-label={isDeleting ? 'Confirm delete bot' : 'Delete bot'}
+          className={`
+            h-14 text-base font-semibold
+            flex items-center justify-center gap-2
+            transition-all duration-200 ease-in-out
+            hover:-translate-y-0.5
+            active:scale-[0.98]
+            focus:outline-none focus:ring-2 focus:ring-offset-2
+            ${
+              isDeleting
+                ? `bg-red-600 hover:bg-red-500
+                   text-white border-red-500
+                   shadow-lg shadow-red-500/30
+                   hover:shadow-red-500/40
+                   focus:ring-red-500 dark:focus:ring-offset-zinc-900`
+                : `bg-red-50 dark:bg-red-500/10
+                   border border-red-200/50 dark:border-red-500/30
+                   text-red-600 dark:text-red-400
+                   hover:bg-red-100 dark:hover:bg-red-500/20
+                   hover:shadow-lg hover:shadow-red-200/50 dark:hover:shadow-red-400/20
+                   focus:ring-red-500 dark:focus:ring-offset-zinc-900`
+            }
+          `}
         >
-          <Trash2 className="mr-1 h-5 w-5" />
+          <Trash2 className="w-5 h-5" />
           {isDeleting ? 'Yes' : 'Delete'}
         </Button>
       </div>
@@ -426,12 +479,12 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
         className={`w-full rounded-xl p-4 flex items-center justify-between transition-all duration-300 ${
           bot.infiniteLoop
             ? 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20'
-            : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800'
+            : 'bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800'
         }`}
       >
         <div className="flex items-center gap-2">
           <svg
-            className={`w-5 h-5 ${bot.infiniteLoop ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground dark:text-gray-400'}`}
+            className={`w-5 h-5 ${bot.infiniteLoop ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground dark:text-zinc-500'}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -443,13 +496,13 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
             />
           </svg>
-          <span className={`text-sm font-semibold ${bot.infiniteLoop ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground dark:text-gray-400'}`}>
+          <span className={`text-sm font-semibold ${bot.infiniteLoop ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground dark:text-zinc-500'}`}>
             Infinite Loop {bot.infiniteLoop ? 'Enabled' : 'Disabled'}
           </span>
         </div>
         <div
           className={`w-11 h-6 rounded-full relative transition-all duration-300 ${
-            bot.infiniteLoop ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+            bot.infiniteLoop ? 'bg-blue-500' : 'bg-gray-300 dark:bg-zinc-700'
           }`}
         >
           <div
