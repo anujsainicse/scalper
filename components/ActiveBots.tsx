@@ -370,14 +370,6 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
               <span className="text-sm text-muted-foreground">•</span>
               <span className="text-sm text-green-600 dark:text-green-400 font-semibold">Buy@{bot.buyPrice.toFixed(2)}</span>
               <span className="text-sm text-red-600 dark:text-red-400 font-semibold">Sell@{bot.sellPrice.toFixed(2)}</span>
-              {livePrice && (
-                <>
-                  <span className="text-sm text-muted-foreground">•</span>
-                  <span className={`text-sm font-semibold ${priceChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    LTP: {livePrice.toFixed(2)}
-                  </span>
-                </>
-              )}
             </div>
 
             {/* Second Row - Details */}
@@ -399,6 +391,14 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
                 <>
                   <span className="text-muted-foreground">•</span>
                   <span className="text-blue-500 dark:text-blue-400 text-xs font-medium">♾️ Loop</span>
+                </>
+              )}
+              {livePrice && (
+                <>
+                  <span className="text-muted-foreground">•</span>
+                  <span className={`text-sm font-semibold ${priceChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    LTP: {livePrice.toFixed(2)}
+                  </span>
                 </>
               )}
               {bot.trailingPercent && (
