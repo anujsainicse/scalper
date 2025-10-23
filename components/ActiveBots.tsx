@@ -448,15 +448,6 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
             </Button>
           </div>
         </div>
-
-        {/* Price Proximity Bar - Compact Version */}
-        <div className="mt-3">
-          <PriceProximityBar
-            buyPrice={bot.buyPrice}
-            sellPrice={bot.sellPrice}
-            currentPrice={livePrice || (bot.buyPrice + bot.sellPrice) / 2}
-          />
-        </div>
       </div>
     );
   }
