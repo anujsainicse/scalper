@@ -1,8 +1,8 @@
 # Scalper Bot - Implementation Status
 
 **Last Updated**: 2025-01-22
-**Version**: 1.2.0
-**Status**: Development (Critical fixes applied, improvements needed)
+**Version**: 1.3.0
+**Status**: Development (Critical fixes applied, UI enhancements added)
 
 ---
 
@@ -138,17 +138,54 @@ Scalper Bot is a cryptocurrency trading bot management platform with automated s
 
 ---
 
+## UI Enhancements (2025-01-22)
+
+### 🎨 Enhancement 1: Dark Mode Button Contrast Fix
+- **Issue**: Bot card action buttons (Stop/Edit/Delete) had poor contrast in dark mode
+- **Root Cause**: Buttons used `dark:bg-zinc-900` which was too dark against card background
+- **Solution**: Changed to `dark:bg-zinc-700` for better visibility and contrast
+- **Status**: ✅ Implemented
+- **Files Modified**: `components/ActiveBots.tsx`
+- **Impact**: Improved accessibility and UX in dark mode
+
+### 🎨 Enhancement 2: Grid/Column Layout Toggle
+- **Feature**: User-selectable layout modes for bot card display
+- **Implementation**:
+  - Added layout toggle buttons (Grid3x3 and List icons) in header
+  - Created comprehensive column layout variant with all bot metrics
+  - Added state management in Zustand store with localStorage persistence
+  - Organized column layout into logical information hierarchy:
+    - Row 1: Configuration details (ticker, exchange, quantity, leverage)
+    - Row 2: Metrics (last fill time, trailing %, loop status, live price)
+- **Status**: ✅ Implemented and tested
+- **Files Modified**:
+  - `components/ActiveBots.tsx` (layout toggle UI and rendering logic)
+  - `store/botStore.ts` (layoutMode state and setLayoutMode action)
+- **Features**:
+  - Grid layout: Responsive 1/2/3 column grid with full bot cards
+  - Column layout: Single-column list with compact horizontal cards
+  - User preference persisted to localStorage
+  - Smooth transitions between layouts
+- **Impact**: Enhanced user experience with flexible viewing options
+
+---
+
 ## Feature Breakdown by Layer
 
 ### Frontend (Next.js + TypeScript)
 - **Status**: ✅ Production Ready
 - **Components**:
   - BotConfiguration (create/edit form)
-  - ActiveBots (bot grid with tabs)
+  - ActiveBots (bot grid/column layout with tabs)
   - ActivityLog (log viewer with filters)
   - Orders (order history)
   - WebSocketMonitor (connection status)
 - **State Management**: Zustand store with reactive updates
+- **UI Features**:
+  - **NEW**: Grid/Column layout toggle with localStorage persistence
+  - Dark mode optimized buttons with proper contrast
+  - Responsive grid layout (1/2/3 columns)
+  - Comprehensive column layout with all bot metrics
 - **Live Features**:
   - 5-second bot/log polling
   - 2-second live price updates per bot
