@@ -22,6 +22,9 @@ import {
   List,
   CheckSquare,
   XSquare,
+  Search,
+  Filter,
+  X,
 } from 'lucide-react';
 
 type BotFilter = 'all' | 'active' | 'stopped';
@@ -44,15 +47,55 @@ export const ActiveBots: React.FC = () => {
 
   const [deletingBot, setDeletingBot] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<BotFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [exchangeFilter, setExchangeFilter] = useState<string>('all');
+  const [pnlFilter, setPnlFilter] = useState<'all' | 'profit' | 'loss'>('all');
+  const [minPnl, setMinPnl] = useState<number | ''>('');
+  const [maxPnl, setMaxPnl] = useState<number | ''>('');
 
   const activeBots = bots.filter((bot) => bot.status === 'ACTIVE');
   const stoppedBots = bots.filter((bot) => bot.status === 'STOPPED');
 
-  // Filter bots based on active tab
-  const filteredBots =
+  // Get unique exchanges for filter dropdown
+  const uniqueExchanges = Array.from(new Set(bots.map((bot) => bot.exchange)));
+
+  // Filter bots based on active tab, search, and filters
+  let filteredBots =
     activeFilter === 'all' ? bots :
     activeFilter === 'active' ? activeBots :
     stoppedBots;
+
+  // Apply search filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filteredBots = filteredBots.filter(
+      (bot) =>
+        bot.ticker.toLowerCase().includes(query) ||
+        bot.exchange.toLowerCase().includes(query) ||
+        bot.id.toLowerCase().includes(query)
+    );
+  }
+
+  // Apply exchange filter
+  if (exchangeFilter !== 'all') {
+    filteredBots = filteredBots.filter((bot) => bot.exchange === exchangeFilter);
+  }
+
+  // Apply PnL filter
+  if (pnlFilter === 'profit') {
+    filteredBots = filteredBots.filter((bot) => bot.pnl > 0);
+  } else if (pnlFilter === 'loss') {
+    filteredBots = filteredBots.filter((bot) => bot.pnl < 0);
+  }
+
+  // Apply PnL range filter
+  if (minPnl !== '') {
+    filteredBots = filteredBots.filter((bot) => bot.pnl >= minPnl);
+  }
+  if (maxPnl !== '') {
+    filteredBots = filteredBots.filter((bot) => bot.pnl <= maxPnl);
+  }
 
   const handleDeleteBot = async (botId: string) => {
     console.log('[DELETE] handleDeleteBot called with botId:', botId);
@@ -170,9 +213,149 @@ export const ActiveBots: React.FC = () => {
   const selectedCount = selectedBotIds.size;
   const allSelected = selectedCount === filteredBots.length && filteredBots.length > 0;
 
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setExchangeFilter('all');
+    setPnlFilter('all');
+    setMinPnl('');
+    setMaxPnl('');
+  };
+
+  const hasActiveFilters =
+    searchQuery.trim() !== '' ||
+    exchangeFilter !== 'all' ||
+    pnlFilter !== 'all' ||
+    minPnl !== '' ||
+    maxPnl !== '';
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
+        {/* Search and Filter Bar */}
+        <div className="mb-3 space-y-2">
+          <div className="flex gap-2">
+            {/* Search Input */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search bots by ticker, exchange, or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Toggle Button */}
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="h-10 px-4"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-2 bg-blue-600 text-white">
+                  {[
+                    searchQuery.trim() !== '',
+                    exchangeFilter !== 'all',
+                    pnlFilter !== 'all',
+                    minPnl !== '' || maxPnl !== '',
+                  ].filter(Boolean).length}
+                </Badge>
+              )}
+            </Button>
+          </div>
+
+          {/* Advanced Filters Panel */}
+          {showFilters && (
+            <div className="p-3 bg-muted/50 border border-border rounded-lg space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Exchange Filter */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">
+                    Exchange
+                  </label>
+                  <select
+                    value={exchangeFilter}
+                    onChange={(e) => setExchangeFilter(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="all">All Exchanges</option>
+                    {uniqueExchanges.map((exchange) => (
+                      <option key={exchange} value={exchange}>
+                        {exchange}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* PnL Type Filter */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">
+                    PnL Type
+                  </label>
+                  <select
+                    value={pnlFilter}
+                    onChange={(e) => setPnlFilter(e.target.value as 'all' | 'profit' | 'loss')}
+                    className="w-full px-3 py-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="all">All</option>
+                    <option value="profit">Profitable Only</option>
+                    <option value="loss">Loss Only</option>
+                  </select>
+                </div>
+
+                {/* PnL Range */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">
+                    PnL Range
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={minPnl}
+                      onChange={(e) => setMinPnl(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-2 py-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={maxPnl}
+                      onChange={(e) => setMaxPnl(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-2 py-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {hasActiveFilters && (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearAllFilters}
+                    className="h-7 text-xs"
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Clear All Filters
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Bulk Actions Bar (shown when bots are selected) */}
         {selectedCount > 0 && (
           <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg flex items-center justify-between">
