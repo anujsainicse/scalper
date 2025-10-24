@@ -16,12 +16,13 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Checkbox } from './ui/checkbox';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
-import { Rocket, AlertCircle, RotateCcw } from 'lucide-react';
+import { Rocket, AlertCircle, RotateCcw, FileCheck } from 'lucide-react';
 import { useBotStore } from '@/store/botStore';
 import { Exchange, OrderSide, BotFormData } from '@/types/bot';
 import { validateTicker } from '@/utils/formatters';
 import { EXCHANGES, TRAILING_PERCENTAGES, LEVERAGE_OPTIONS, POPULAR_TICKERS } from '@/config/bot-config';
 import { api } from '@/lib/api';
+import { BotTemplates } from './BotTemplates';
 
 export const BotConfiguration: React.FC = () => {
   const addBot = useBotStore((state) => state.addBot);
@@ -48,6 +49,7 @@ export const BotConfiguration: React.FC = () => {
   const [priceData, setPriceData] = useState<Record<string, any> | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [decimalPlaces, setDecimalPlaces] = useState<number>(2);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [countdown, setCountdown] = useState<number>(0);
 
   // Handle countdown timer
@@ -304,17 +306,30 @@ export const BotConfiguration: React.FC = () => {
     <Card className="h-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle>Bot Configuration</CardTitle>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleReset}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-500 dark:hover:text-red-400 dark:hover:bg-red-950"
-          title="Reset to default values"
-        >
-          <RotateCcw className="h-4 w-4" />
-          <span className="ml-1 text-sm font-medium">reset</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowTemplates(!showTemplates)}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
+            title="Manage templates"
+          >
+            <FileCheck className="h-4 w-4" />
+            <span className="ml-1 text-sm font-medium">templates</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-500 dark:hover:text-red-400 dark:hover:bg-red-950"
+            title="Reset to default values"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span className="ml-1 text-sm font-medium">reset</span>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -737,6 +752,20 @@ export const BotConfiguration: React.FC = () => {
             )}
           </div>
         </form>
+
+        {/* Bot Templates Section */}
+        {showTemplates && (
+          <div className="mt-4">
+            <BotTemplates
+              currentConfig={formData}
+              onApplyTemplate={(config) => {
+                setFormData(config);
+                toast.success('✅ Template applied to form');
+              }}
+              onClose={() => setShowTemplates(false)}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
