@@ -473,7 +473,7 @@ export const ActiveBots: React.FC = () => {
               <Button
                 size="sm"
                 onClick={handleBulkStart}
-                className="h-8 bg-green-600 hover:bg-green-500 text-white"
+                className="h-8 bg-green-500 hover:bg-green-600 text-white border-0 shadow-sm hover:shadow-md"
               >
                 <Play className="mr-1.5 h-3.5 w-3.5" />
                 Start All
@@ -481,8 +481,7 @@ export const ActiveBots: React.FC = () => {
               <Button
                 size="sm"
                 onClick={handleBulkStop}
-                variant="outline"
-                className="h-8 border-gray-300 dark:border-zinc-600"
+                className="h-8 bg-orange-500 hover:bg-orange-600 text-white border-0 shadow-sm hover:shadow-md"
               >
                 <Square className="mr-1.5 h-3.5 w-3.5" />
                 Stop All
@@ -490,8 +489,7 @@ export const ActiveBots: React.FC = () => {
               <Button
                 size="sm"
                 onClick={handleBulkDelete}
-                variant="destructive"
-                className="h-8"
+                className="h-8 bg-red-600 hover:bg-red-700 text-white border-0 shadow-sm hover:shadow-md"
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 Delete
@@ -597,7 +595,11 @@ export const ActiveBots: React.FC = () => {
 
           {/* Stop All Button */}
           {activeBots.length > 0 && (
-            <Button variant="destructive" size="sm" onClick={handleStopAll}>
+            <Button
+              size="sm"
+              onClick={handleStopAll}
+              className="bg-red-600 hover:bg-red-700 text-white border-0 shadow-sm hover:shadow-md"
+            >
               <AlertTriangle className="mr-2 h-4 w-4" />
               Stop All
             </Button>
