@@ -461,9 +461,8 @@ export const ActiveBots: React.FC = () => {
               </span>
               <Button
                 size="sm"
-                variant="outline"
                 onClick={clearSelection}
-                className="h-7 text-xs border-blue-300 dark:border-blue-500/40 hover:bg-blue-100 dark:hover:bg-blue-500/20"
+                className="h-7 text-xs bg-gray-500 hover:bg-gray-600 text-white border-0 shadow-sm hover:shadow-md"
               >
                 <XSquare className="mr-1 h-3 w-3" />
                 Clear
