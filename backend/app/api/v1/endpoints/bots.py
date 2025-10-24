@@ -20,6 +20,7 @@ from app.schemas.bot import (
 from app.schemas.order import OrderResponse
 from app.services.telegram import telegram_service
 from app.services.order_service import place_order_for_bot, get_exchange_for_bot as get_exchange_adapter
+from app.services.websocket_manager import ws_manager
 from app.exchanges import ExchangeFactory, OrderRequest, OrderSide, OrderType, BaseExchange
 
 router = APIRouter()
@@ -175,6 +176,17 @@ async def create_bot(
                     f"Status: ACTIVE",
             level="SUCCESS"
         )
+
+        # Broadcast bot creation via WebSocket
+        await ws_manager.broadcast_bot_created({
+            "id": str(bot.id),
+            "ticker": bot.ticker,
+            "exchange": bot.exchange.value,
+            "status": bot.status.value,
+            "quantity": float(bot.quantity),
+            "buy_price": float(bot.buy_price),
+            "sell_price": float(bot.sell_price),
+        })
 
         logger.info(f"Bot {bot.id} started successfully with order {order_response.order_id}")
         return bot
@@ -445,6 +457,18 @@ async def update_bot(
     await db.commit()
     await db.refresh(bot)
 
+    # Broadcast bot update via WebSocket
+    await ws_manager.broadcast_bot_update(str(bot.id), {
+        "ticker": bot.ticker,
+        "exchange": bot.exchange.value,
+        "status": bot.status.value,
+        "quantity": float(bot.quantity),
+        "buy_price": float(bot.buy_price),
+        "sell_price": float(bot.sell_price),
+        "pnl": float(bot.pnl) if bot.pnl else 0.0,
+        "total_trades": bot.total_trades,
+    })
+
     logger.info(f"[UPDATE-BOT] Bot {bot_id} updated successfully")
     return bot
 
@@ -553,6 +577,10 @@ async def delete_bot(
                 f"Exchange: {exchange}{cancel_text}",
         level="WARNING"
     )
+
+    # Broadcast bot deletion via WebSocket
+    await ws_manager.broadcast_bot_deleted(str(bot_id))
+
     logger.info(f"[DELETE-BOT] Delete operation completed successfully")
 
     return None
@@ -794,6 +822,13 @@ async def toggle_bot(
 
     await db.commit()
     await db.refresh(bot)
+
+    # Broadcast bot update via WebSocket
+    await ws_manager.broadcast_bot_update(str(bot.id), {
+        "status": bot.status.value,
+        "ticker": bot.ticker,
+        "exchange": bot.exchange.value,
+    })
 
     return bot
 

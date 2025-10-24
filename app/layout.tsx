@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,8 +36,10 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
-          <Toaster position="top-right" />
+          <WebSocketProvider>
+            {children}
+            <Toaster position="top-right" />
+          </WebSocketProvider>
         </ThemeProvider>
       </body>
     </html>

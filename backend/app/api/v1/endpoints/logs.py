@@ -7,6 +7,7 @@ from uuid import UUID
 from app.db.session import get_db
 from app.models.bot import ActivityLog
 from app.schemas.bot import ActivityLogResponse, ActivityLogCreate
+from app.services.websocket_manager import ws_manager
 
 router = APIRouter()
 
@@ -55,6 +56,15 @@ async def create_activity_log(
     db.add(log)
     await db.commit()
     await db.refresh(log)
+
+    # Broadcast log creation via WebSocket
+    await ws_manager.broadcast_log_created({
+        "id": str(log.id),
+        "level": log.level,
+        "message": log.message,
+        "botId": str(log.bot_id) if log.bot_id else None,
+        "timestamp": log.timestamp.isoformat(),
+    })
 
     return log
 
