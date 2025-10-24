@@ -863,10 +863,10 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
             <Button
               onClick={onToggle}
               size="sm"
-              className={`h-9 px-4 font-semibold transition-all ${
+              className={`h-9 px-4 font-semibold transition-all shadow-sm hover:shadow-md ${
                 isActive
-                  ? 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white border border-gray-300 dark:border-zinc-600'
-                  : 'bg-green-600 hover:bg-green-500 text-white'
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white border-0'
+                  : 'bg-green-500 hover:bg-green-600 text-white border-0'
               }`}
             >
               {isActive ? <Square className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
@@ -875,8 +875,7 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
             <Button
               onClick={onEdit}
               size="sm"
-              variant="outline"
-              className="h-9 px-4 font-semibold bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100"
+              className="h-9 px-4 font-semibold bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-sm hover:shadow-md transition-all"
             >
               <Edit className="mr-1.5 h-4 w-4" />
               Edit
@@ -885,14 +884,14 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
               onClick={onDelete}
               size="sm"
               variant="outline"
-              className={`h-9 px-4 font-semibold transition-all ${
+              className={`h-9 px-4 font-semibold transition-all shadow-sm hover:shadow-md ${
                 isDeleting
-                  ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
-                  : 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100'
+                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+                  : 'border-2 border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50'
               }`}
             >
               <Trash2 className="mr-1.5 h-4 w-4" />
-              {isDeleting ? 'Yes' : 'Delete'}
+              {isDeleting ? 'Confirm' : 'Delete'}
             </Button>
           </div>
         </div>
@@ -998,43 +997,42 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
       <div className="grid grid-cols-3 gap-3 mb-4">
         <Button
           onClick={onToggle}
-          className={`h-14 text-base font-semibold transition-all duration-300 ${
+          className={`h-12 text-base font-semibold transition-all shadow-md hover:shadow-lg ${
             isActive
-              ? 'bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-900 dark:text-white border border-gray-300 dark:border-zinc-600'
-              : 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
+              ? 'bg-orange-500 hover:bg-orange-600 text-white border-0'
+              : 'bg-green-500 hover:bg-green-600 text-white border-0 shadow-green-500/20'
           }`}
         >
           {isActive ? (
             <>
-              <Square className="mr-2 h-5 w-5" />
+              <Square className="mr-2 h-4 w-4" />
               Stop
             </>
           ) : (
             <>
-              <Play className="mr-2 h-5 w-5" />
+              <Play className="mr-2 h-4 w-4" />
               Start
             </>
           )}
         </Button>
         <Button
           onClick={onEdit}
-          variant="outline"
-          className="h-14 text-base font-semibold bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100"
+          className="h-12 text-base font-semibold bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
         >
-          <Edit className="mr-2 h-5 w-5" />
+          <Edit className="mr-2 h-4 w-4" />
           Edit
         </Button>
         <Button
           onClick={onDelete}
           variant="outline"
-          className={`h-14 text-base font-semibold transition-all ${
+          className={`h-12 text-base font-semibold transition-all shadow-md hover:shadow-lg ${
             isDeleting
-              ? 'bg-red-600 hover:bg-red-500 text-white border-red-500'
-              : 'bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-100'
+              ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+              : 'border-2 border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50'
           }`}
         >
-          <Trash2 className="mr-1 h-5 w-5" />
-          {isDeleting ? 'Yes' : 'Delete'}
+          <Trash2 className="mr-2 h-4 w-4" />
+          {isDeleting ? 'Confirm' : 'Delete'}
         </Button>
       </div>
 
