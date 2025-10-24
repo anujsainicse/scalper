@@ -9,6 +9,8 @@ import { useBotStore } from '@/store/botStore';
 import { formatRelativeTime, formatPnL } from '@/utils/formatters';
 import { ActiveBot } from '@/types/bot';
 import { PriceProximityBar } from './PriceProximityBar';
+import { useKeyboardShortcuts, KeyboardShortcut } from '@/hooks/useKeyboardShortcuts';
+import { ShortcutsHelp } from './ShortcutsHelp';
 import {
   Play,
   Square,
@@ -25,6 +27,7 @@ import {
   Search,
   Filter,
   X,
+  Keyboard,
 } from 'lucide-react';
 
 type BotFilter = 'all' | 'active' | 'stopped';
@@ -53,6 +56,7 @@ export const ActiveBots: React.FC = () => {
   const [pnlFilter, setPnlFilter] = useState<'all' | 'profit' | 'loss'>('all');
   const [minPnl, setMinPnl] = useState<number | ''>('');
   const [maxPnl, setMaxPnl] = useState<number | ''>('');
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
   const activeBots = bots.filter((bot) => bot.status === 'ACTIVE');
   const stoppedBots = bots.filter((bot) => bot.status === 'STOPPED');
@@ -227,6 +231,98 @@ export const ActiveBots: React.FC = () => {
     pnlFilter !== 'all' ||
     minPnl !== '' ||
     maxPnl !== '';
+
+  // Keyboard shortcuts
+  const shortcuts: KeyboardShortcut[] = [
+    {
+      key: '?',
+      action: () => setShowShortcutsHelp((prev) => !prev),
+      description: 'Toggle keyboard shortcuts help',
+    },
+    {
+      key: 'a',
+      ctrl: true,
+      action: () => {
+        if (filteredBots.length > 0) {
+          handleSelectAll();
+        }
+      },
+      description: 'Select/deselect all bots',
+    },
+    {
+      key: 'Escape',
+      action: () => {
+        if (selectedCount > 0) {
+          clearSelection();
+        } else if (showShortcutsHelp) {
+          setShowShortcutsHelp(false);
+        }
+      },
+      description: 'Clear selection or close dialogs',
+    },
+    {
+      key: 'f',
+      ctrl: true,
+      action: () => setShowFilters((prev) => !prev),
+      description: 'Toggle filters panel',
+    },
+    {
+      key: 's',
+      ctrl: true,
+      action: () => {
+        if (selectedCount > 0) {
+          handleBulkStart();
+        }
+      },
+      description: 'Start selected bots',
+    },
+    {
+      key: 'x',
+      ctrl: true,
+      action: () => {
+        if (selectedCount > 0) {
+          handleBulkStop();
+        }
+      },
+      description: 'Stop selected bots',
+    },
+    {
+      key: 'Delete',
+      action: () => {
+        if (selectedCount > 0) {
+          handleBulkDelete();
+        }
+      },
+      description: 'Delete selected bots',
+    },
+    {
+      key: 'g',
+      action: () => setLayoutMode('grid'),
+      description: 'Switch to grid layout',
+    },
+    {
+      key: 'l',
+      action: () => setLayoutMode('column'),
+      description: 'Switch to list layout',
+    },
+    {
+      key: '1',
+      action: () => setActiveFilter('all'),
+      description: 'Show all bots',
+    },
+    {
+      key: '2',
+      action: () => setActiveFilter('active'),
+      description: 'Show active bots only',
+    },
+    {
+      key: '3',
+      action: () => setActiveFilter('stopped'),
+      description: 'Show stopped bots only',
+    },
+  ];
+
+  useKeyboardShortcuts(shortcuts, !showShortcutsHelp);
 
   return (
     <Card className="h-full flex flex-col">
@@ -472,10 +568,19 @@ export const ActiveBots: React.FC = () => {
           <div className="flex gap-1 ml-auto mr-2">
             <Button
               size="sm"
+              variant="ghost"
+              onClick={() => setShowShortcutsHelp(true)}
+              className="h-8 w-8 p-0"
+              title="Keyboard Shortcuts (?)"
+            >
+              <Keyboard className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
               variant={layoutMode === 'grid' ? 'default' : 'ghost'}
               onClick={() => setLayoutMode('grid')}
               className="h-8 w-8 p-0"
-              title="Grid View"
+              title="Grid View (G)"
             >
               <Grid3x3 className="h-4 w-4" />
             </Button>
@@ -484,7 +589,7 @@ export const ActiveBots: React.FC = () => {
               variant={layoutMode === 'column' ? 'default' : 'ghost'}
               onClick={() => setLayoutMode('column')}
               className="h-8 w-8 p-0"
-              title="List View"
+              title="List View (L)"
             >
               <List className="h-4 w-4" />
             </Button>
@@ -543,6 +648,14 @@ export const ActiveBots: React.FC = () => {
           </div>
         )}
       </CardContent>
+
+      {/* Keyboard Shortcuts Help Modal */}
+      {showShortcutsHelp && (
+        <ShortcutsHelp
+          shortcuts={shortcuts}
+          onClose={() => setShowShortcutsHelp(false)}
+        />
+      )}
     </Card>
   );
 };
