@@ -6,14 +6,15 @@ import { ActiveBots } from '@/components/ActiveBots';
 import { ActivityLog } from '@/components/ActivityLog';
 import { Orders } from '@/components/Orders';
 import { WebSocketMonitor } from '@/components/WebSocketMonitor';
+import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TelegramConnect } from '@/components/TelegramConnect';
 import { DataLoader } from '@/components/DataLoader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Package, Radio } from 'lucide-react';
+import { FileText, Package, Radio, BarChart3 } from 'lucide-react';
 
-type BottomTab = 'logs' | 'orders' | 'websocket';
+type BottomTab = 'logs' | 'orders' | 'websocket' | 'analytics';
 
 export default function Home() {
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>('logs');
@@ -94,14 +95,29 @@ export default function Home() {
             <Radio className="mr-2 h-5 w-5" />
             WebSocket
           </Button>
+          <Button
+            variant={activeBottomTab === 'analytics' ? 'default' : 'outline'}
+            size="lg"
+            onClick={() => setActiveBottomTab('analytics')}
+            className={`h-12 px-6 font-semibold transition-all duration-300 ${
+              activeBottomTab === 'analytics'
+                ? 'bg-gradient-to-r from-orange-600 to-orange-500 shadow-lg shadow-orange-500/30'
+                : 'bg-muted dark:bg-zinc-900 border-border dark:border-zinc-700 hover:bg-muted/80 dark:hover:bg-zinc-800 text-muted-foreground dark:text-zinc-300'
+            }`}
+          >
+            <BarChart3 className="mr-2 h-5 w-5" />
+            Analytics
+          </Button>
         </div>
         <div className="h-[calc(100%-60px)] rounded-xl overflow-hidden border border-border dark:border-zinc-800">
           {activeBottomTab === 'logs' ? (
             <ActivityLog />
           ) : activeBottomTab === 'orders' ? (
             <Orders />
-          ) : (
+          ) : activeBottomTab === 'websocket' ? (
             <WebSocketMonitor />
+          ) : (
+            <AnalyticsDashboard />
           )}
         </div>
       </div>

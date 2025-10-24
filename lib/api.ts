@@ -228,6 +228,47 @@ class ApiClient {
 
     return this.request<any>(`/price/ltp?${params.toString()}`);
   }
+
+  // Analytics endpoints
+  async getAnalyticsPortfolio(dateRange?: string): Promise<any> {
+    const params = dateRange ? `?range=${dateRange}` : '';
+    return this.request<any>(`/analytics/portfolio${params}`);
+  }
+
+  async getAnalyticsPerformance(dateRange?: string): Promise<any> {
+    const params = dateRange ? `?range=${dateRange}` : '';
+    return this.request<any>(`/analytics/performance${params}`);
+  }
+
+  async getAnalyticsPnLHistory(dateRange?: string, botIds?: string[]): Promise<any> {
+    const params = new URLSearchParams();
+    if (dateRange) params.append('range', dateRange);
+    if (botIds && botIds.length > 0) {
+      botIds.forEach((id) => params.append('bot_ids', id));
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<any>(`/analytics/pnl-history${query}`);
+  }
+
+  async getAnalyticsTradeHistory(dateRange?: string, botIds?: string[]): Promise<any> {
+    const params = new URLSearchParams();
+    if (dateRange) params.append('range', dateRange);
+    if (botIds && botIds.length > 0) {
+      botIds.forEach((id) => params.append('bot_ids', id));
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<any>(`/analytics/trade-history${query}`);
+  }
+
+  async getAnalyticsBotComparison(dateRange?: string): Promise<any> {
+    const params = dateRange ? `?range=${dateRange}` : '';
+    return this.request<any>(`/analytics/bot-comparison${params}`);
+  }
+
+  async getAnalyticsHourlyPerformance(dateRange?: string): Promise<any> {
+    const params = dateRange ? `?range=${dateRange}` : '';
+    return this.request<any>(`/analytics/hourly-performance${params}`);
+  }
 }
 
 // Export singleton instance
