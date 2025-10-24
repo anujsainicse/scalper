@@ -79,7 +79,7 @@ export const BotComparison: React.FC = () => {
                   "text-right font-bold min-w-[100px]",
                   bot.pnl > 0 ? "text-green-500" : "text-red-500"
                 )}>
-                  {formatPnL(bot.pnl)}
+                  {formatPnL(bot.pnl).text}
                 </div>
               </div>
             </div>

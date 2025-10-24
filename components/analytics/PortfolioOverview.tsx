@@ -75,7 +75,7 @@ export const PortfolioOverview: React.FC = () => {
               isProfitable ? 'text-green-500' : 'text-red-500'
             )}
           >
-            {formatPnL(metrics.totalPnL)}
+            {formatPnL(metrics.totalPnL).text}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Combined across all bots
