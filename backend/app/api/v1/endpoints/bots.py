@@ -165,18 +165,6 @@ async def create_bot(
         await db.commit()
         await db.refresh(bot)
 
-        # Send Telegram notification
-        await telegram_service.send_notification(
-            db=db,
-            message=f"*Bot Started*\n\n"
-                    f"Ticker: {bot.ticker}\n"
-                    f"Exchange: {bot.exchange.value}\n"
-                    f"Order: {order_side.value} {bot.quantity} @ ${order_price}\n"
-                    f"Order ID: {order_response.order_id}\n"
-                    f"Status: ACTIVE",
-            level="SUCCESS"
-        )
-
         # Broadcast bot creation via WebSocket
         await ws_manager.broadcast_bot_created({
             "id": str(bot.id),
@@ -416,16 +404,6 @@ async def update_bot(
 
             logger.info(f"[UPDATE-BOT] New order placed successfully: {order_response.order_id}")
 
-            # Send Telegram notification
-            await telegram_service.send_notification(
-                db=db,
-                message=f"*Bot Updated*\n\n"
-                        f"Ticker: {bot.ticker}\n"
-                        f"Cancelled: {cancelled_count} order(s)\n"
-                        f"New Order: {order_side_enum.value} {bot.quantity} @ ${order_price}",
-                level="SUCCESS"
-            )
-
         except Exception as e:
             logger.error(f"[UPDATE-BOT] Error managing exchange orders: {e}")
             bot.status = BotStatus.ERROR
@@ -567,17 +545,6 @@ async def delete_bot(
     await db.commit()
     logger.info(f"[DELETE-BOT] Bot deleted successfully from database")
 
-    # Send Telegram notification
-    logger.info(f"[DELETE-BOT] Sending Telegram notification...")
-    cancel_text = f"\nCancelled Orders: {cancelled_count}" if cancelled_count > 0 else ""
-    await telegram_service.send_notification(
-        db=db,
-        message=f"*Bot Deleted*\n\n"
-                f"Ticker: {ticker}\n"
-                f"Exchange: {exchange}{cancel_text}",
-        level="WARNING"
-    )
-
     # Broadcast bot deletion via WebSocket
     await ws_manager.broadcast_bot_deleted(str(bot_id))
 
@@ -626,18 +593,6 @@ async def start_bot(
 
         await db.commit()
         await db.refresh(bot)
-
-        # Send Telegram notification
-        await telegram_service.send_notification(
-            db=db,
-            message=f"*Bot Started*\n\n"
-                    f"Ticker: {bot.ticker}\n"
-                    f"Exchange: {bot.exchange.value}\n"
-                    f"Order: {order_side.value} {bot.quantity} @ ${order_price}\n"
-                    f"Order ID: {db_order.exchange_order_id}\n"
-                    f"Status: ACTIVE",
-            level="SUCCESS"
-        )
 
         logger.info(f"Bot {bot.id} started successfully with order {db_order.exchange_order_id}")
         return bot
@@ -854,15 +809,6 @@ async def stop_all_bots(
     db.add(log)
 
     await db.commit()
-
-    # Send Telegram notification
-    await telegram_service.send_notification(
-        db=db,
-        message=f"*Emergency Stop*\n\n"
-                f"All bots have been stopped!\n"
-                f"Total bots stopped: {len(bots)}",
-        level="ERROR"
-    )
 
     return {"message": f"Stopped {len(bots)} bots", "count": len(bots)}
 

@@ -12,6 +12,7 @@ interface BotStore {
   isLoading: boolean;
   error: string | null;
   layoutMode: 'grid' | 'column';
+  selectedBotIds: Set<string>;
 
   // Bot actions
   fetchBots: () => Promise<void>;
@@ -23,6 +24,14 @@ interface BotStore {
   toggleBot: (botId: string) => Promise<void>;
   stopAllBots: () => Promise<void>;
   setEditingBot: (botId: string | null) => void;
+
+  // Bulk selection actions
+  toggleBotSelection: (botId: string) => void;
+  selectAllBots: () => void;
+  clearSelection: () => void;
+  bulkStartBots: (botIds: string[]) => Promise<void>;
+  bulkStopBots: (botIds: string[]) => Promise<void>;
+  bulkDeleteBots: (botIds: string[]) => Promise<void>;
 
   // Log actions
   fetchLogs: () => Promise<void>;
@@ -75,6 +84,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
   isLoading: false,
   error: null,
   layoutMode: (typeof window !== 'undefined' && localStorage.getItem('botLayoutMode') as 'grid' | 'column') || 'grid',
+  selectedBotIds: new Set<string>(),
 
   // Fetch bots from API
   fetchBots: async () => {
@@ -310,6 +320,99 @@ export const useBotStore = create<BotStore>((set, get) => ({
       }));
     } catch (error) {
       console.error('Failed to clear logs:', error);
+    }
+  },
+
+  // Bulk selection actions
+  toggleBotSelection: (botId: string) => {
+    set((state) => {
+      const newSelection = new Set(state.selectedBotIds);
+      if (newSelection.has(botId)) {
+        newSelection.delete(botId);
+      } else {
+        newSelection.add(botId);
+      }
+      return { selectedBotIds: newSelection };
+    });
+  },
+
+  selectAllBots: () => {
+    set((state) => ({
+      selectedBotIds: new Set(state.bots.map((bot) => bot.id)),
+    }));
+  },
+
+  clearSelection: () => {
+    set({ selectedBotIds: new Set<string>() });
+  },
+
+  bulkStartBots: async (botIds: string[]) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Start all selected bots in parallel
+      await Promise.all(botIds.map((botId) => api.startBot(botId)));
+
+      // Fetch updated bots
+      await get().fetchBots();
+
+      // Refresh logs
+      await get().fetchLogs();
+
+      // Clear selection
+      set({ selectedBotIds: new Set<string>(), isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to start bots',
+        isLoading: false
+      });
+      throw error;
+    }
+  },
+
+  bulkStopBots: async (botIds: string[]) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Stop all selected bots in parallel
+      await Promise.all(botIds.map((botId) => api.stopBot(botId)));
+
+      // Fetch updated bots
+      await get().fetchBots();
+
+      // Refresh logs
+      await get().fetchLogs();
+
+      // Clear selection
+      set({ selectedBotIds: new Set<string>(), isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to stop bots',
+        isLoading: false
+      });
+      throw error;
+    }
+  },
+
+  bulkDeleteBots: async (botIds: string[]) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Delete all selected bots in parallel
+      await Promise.all(botIds.map((botId) => api.deleteBot(botId)));
+
+      // Remove deleted bots from state
+      set((state) => ({
+        bots: state.bots.filter((bot) => !botIds.includes(bot.id)),
+        selectedBotIds: new Set<string>(),
+        isLoading: false,
+      }));
+
+      // Refresh logs
+      await get().fetchLogs();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete bots',
+        isLoading: false
+      });
+      throw error;
     }
   },
 

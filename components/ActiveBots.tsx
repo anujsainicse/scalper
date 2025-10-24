@@ -20,6 +20,8 @@ import {
   Edit,
   Grid3x3,
   List,
+  CheckSquare,
+  XSquare,
 } from 'lucide-react';
 
 type BotFilter = 'all' | 'active' | 'stopped';
@@ -32,6 +34,13 @@ export const ActiveBots: React.FC = () => {
   const setEditingBot = useBotStore((state) => state.setEditingBot);
   const layoutMode = useBotStore((state) => state.layoutMode);
   const setLayoutMode = useBotStore((state) => state.setLayoutMode);
+  const selectedBotIds = useBotStore((state) => state.selectedBotIds);
+  const toggleBotSelection = useBotStore((state) => state.toggleBotSelection);
+  const selectAllBots = useBotStore((state) => state.selectAllBots);
+  const clearSelection = useBotStore((state) => state.clearSelection);
+  const bulkStartBots = useBotStore((state) => state.bulkStartBots);
+  const bulkStopBots = useBotStore((state) => state.bulkStopBots);
+  const bulkDeleteBots = useBotStore((state) => state.bulkDeleteBots);
 
   const [deletingBot, setDeletingBot] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<BotFilter>('all');
@@ -103,12 +112,127 @@ export const ActiveBots: React.FC = () => {
     }
   };
 
+  const handleBulkStart = async () => {
+    const selectedIds = Array.from(selectedBotIds);
+    if (selectedIds.length === 0) {
+      toast.error('No bots selected');
+      return;
+    }
+
+    try {
+      await bulkStartBots(selectedIds);
+      toast.success(`▶️ Started ${selectedIds.length} bot(s)`);
+    } catch (error) {
+      toast.error('❌ Failed to start selected bots');
+    }
+  };
+
+  const handleBulkStop = async () => {
+    const selectedIds = Array.from(selectedBotIds);
+    if (selectedIds.length === 0) {
+      toast.error('No bots selected');
+      return;
+    }
+
+    try {
+      await bulkStopBots(selectedIds);
+      toast.success(`⏸️ Stopped ${selectedIds.length} bot(s)`);
+    } catch (error) {
+      toast.error('❌ Failed to stop selected bots');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const selectedIds = Array.from(selectedBotIds);
+    if (selectedIds.length === 0) {
+      toast.error('No bots selected');
+      return;
+    }
+
+    if (window.confirm(`Delete ${selectedIds.length} selected bot(s)? This cannot be undone.`)) {
+      try {
+        await bulkDeleteBots(selectedIds);
+        toast.success(`🗑️ Deleted ${selectedIds.length} bot(s)`);
+      } catch (error) {
+        toast.error('❌ Failed to delete selected bots');
+      }
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedBotIds.size === filteredBots.length) {
+      clearSelection();
+    } else {
+      selectAllBots();
+    }
+  };
+
+  const selectedCount = selectedBotIds.size;
+  const allSelected = selectedCount === filteredBots.length && filteredBots.length > 0;
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
+        {/* Bulk Actions Bar (shown when bots are selected) */}
+        {selectedCount > 0 && (
+          <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                {selectedCount} bot{selectedCount > 1 ? 's' : ''} selected
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={clearSelection}
+                className="h-7 text-xs border-blue-300 dark:border-blue-500/40 hover:bg-blue-100 dark:hover:bg-blue-500/20"
+              >
+                <XSquare className="mr-1 h-3 w-3" />
+                Clear
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleBulkStart}
+                className="h-8 bg-green-600 hover:bg-green-500 text-white"
+              >
+                <Play className="mr-1.5 h-3.5 w-3.5" />
+                Start All
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkStop}
+                variant="outline"
+                className="h-8 border-gray-300 dark:border-zinc-600"
+              >
+                <Square className="mr-1.5 h-3.5 w-3.5" />
+                Stop All
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkDelete}
+                variant="destructive"
+                className="h-8"
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
-          {/* Tabs */}
+          {/* Select All Checkbox + Tabs */}
           <div className="flex gap-2 border-b flex-1">
+            {filteredBots.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="px-2 py-2 hover:bg-muted rounded transition-colors"
+                title={allSelected ? 'Deselect all' : 'Select all'}
+              >
+                <CheckSquare className={`h-5 w-5 ${allSelected ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`} />
+              </button>
+            )}
             <button
               onClick={() => setActiveFilter('all')}
               className={`px-4 py-2 text-sm font-medium transition-colors relative ${
@@ -229,6 +353,8 @@ export const ActiveBots: React.FC = () => {
                 onEdit={() => setEditingBot(bot.id)}
                 isDeleting={deletingBot === bot.id}
                 layoutMode={layoutMode}
+                isSelected={selectedBotIds.has(bot.id)}
+                onSelect={() => toggleBotSelection(bot.id)}
               />
             ))}
           </div>
@@ -245,9 +371,11 @@ interface BotCardProps {
   onEdit: () => void;
   isDeleting: boolean;
   layoutMode: 'grid' | 'column';
+  isSelected: boolean;
+  onSelect: () => void;
 }
 
-const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDeleting, layoutMode }) => {
+const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDeleting, layoutMode, isSelected, onSelect }) => {
   const [livePrice, setLivePrice] = React.useState<number | null>(null);
   const [priceChange, setPriceChange] = React.useState<number>(0);
   const updateBot = useBotStore((state) => state.updateBot);
@@ -345,8 +473,32 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
   // Column layout (horizontal)
   if (layoutMode === 'column') {
     return (
-      <div className="bg-card border border-border rounded-xl p-4 hover:border-muted-foreground/50 transition-all duration-300 shadow-lg">
+      <div className={`bg-card border rounded-xl p-4 hover:border-muted-foreground/50 transition-all duration-300 shadow-lg ${
+        isSelected ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-500/5' : 'border-border'
+      }`}>
         <div className="flex items-center gap-4">
+          {/* Checkbox */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            className="shrink-0"
+            title={isSelected ? 'Deselect' : 'Select'}
+          >
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+              isSelected
+                ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500'
+                : 'border-gray-300 dark:border-zinc-600 hover:border-blue-400 dark:hover:border-blue-500'
+            }`}>
+              {isSelected && (
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+          </button>
+
           {/* Status Badge */}
           <Badge
             variant="secondary"
@@ -454,7 +606,33 @@ const BotCard: React.FC<BotCardProps> = ({ bot, onToggle, onDelete, onEdit, isDe
 
   // Grid layout (vertical - original)
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 hover:border-muted-foreground/50 transition-all duration-300 shadow-xl">
+    <div className={`bg-card border rounded-2xl p-6 hover:border-muted-foreground/50 transition-all duration-300 shadow-xl ${
+      isSelected ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-500/5' : 'border-border'
+    }`}>
+      {/* Checkbox - Top Right Corner */}
+      <div className="flex items-start justify-between mb-4">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+          className="shrink-0"
+          title={isSelected ? 'Deselect' : 'Select'}
+        >
+          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+            isSelected
+              ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500'
+              : 'border-gray-300 dark:border-zinc-600 hover:border-blue-400 dark:hover:border-blue-500'
+          }`}>
+            {isSelected && (
+              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
