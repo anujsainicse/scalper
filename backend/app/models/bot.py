@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, Enum as SQLEnum, JSON
+from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, Enum as SQLEnum, JSON, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -27,6 +27,9 @@ class Bot(Base):
     __tablename__ = "bots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+
+    # User Relationship (MULTI-USER SUPPORT)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Bot Configuration
     ticker = Column(String(20), nullable=False, index=True)
@@ -57,16 +60,21 @@ class Bot(Base):
     config = Column(JSON, nullable=True)  # For storing additional configuration
 
     # Relationships
+    user = relationship("User", back_populates="bots")
     orders = relationship("Order", back_populates="bot", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<Bot(id={self.id}, ticker={self.ticker}, status={self.status})>"
+        return f"<Bot(id={self.id}, user_id={self.user_id}, ticker={self.ticker}, status={self.status})>"
 
 
 class ActivityLog(Base):
     __tablename__ = "activity_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+
+    # User Relationship (MULTI-USER SUPPORT)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
     bot_id = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     level = Column(String(20), nullable=False, index=True)  # INFO, SUCCESS, WARNING, ERROR, TELEGRAM
@@ -77,14 +85,21 @@ class ActivityLog(Base):
     # Additional metadata
     extra_data = Column(JSON, nullable=True)
 
+    # Relationships
+    user = relationship("User", back_populates="activity_logs")
+
     def __repr__(self):
-        return f"<ActivityLog(id={self.id}, level={self.level}, message={self.message[:50]})>"
+        return f"<ActivityLog(id={self.id}, user_id={self.user_id}, level={self.level}, message={self.message[:50]})>"
 
 
 class Trade(Base):
     __tablename__ = "trades"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+
+    # User Relationship (MULTI-USER SUPPORT)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
     bot_id = Column(UUID(as_uuid=True), nullable=False, index=True)
 
     # Trade Details
@@ -107,8 +122,11 @@ class Trade(Base):
     # Additional metadata
     extra_data = Column(JSON, nullable=True)
 
+    # Relationships
+    user = relationship("User", back_populates="trades")
+
     def __repr__(self):
-        return f"<Trade(id={self.id}, symbol={self.symbol}, side={self.side}, price={self.price})>"
+        return f"<Trade(id={self.id}, user_id={self.user_id}, symbol={self.symbol}, side={self.side}, price={self.price})>"
 
 
 class TelegramConnection(Base):
@@ -116,8 +134,11 @@ class TelegramConnection(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
+    # User Relationship (MULTI-USER SUPPORT)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
     # Telegram Info
-    chat_id = Column(String(100), unique=True, nullable=False, index=True)
+    chat_id = Column(String(100), nullable=False, index=True)  # Changed from unique to support multiple users
     username = Column(String(100), nullable=True)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
@@ -134,5 +155,8 @@ class TelegramConnection(Base):
     # Additional metadata
     extra_data = Column(JSON, nullable=True)
 
+    # Relationships
+    user = relationship("User", back_populates="telegram_connections")
+
     def __repr__(self):
-        return f"<TelegramConnection(id={self.id}, chat_id={self.chat_id}, username={self.username})>"
+        return f"<TelegramConnection(id={self.id}, user_id={self.user_id}, chat_id={self.chat_id}, username={self.username})>"

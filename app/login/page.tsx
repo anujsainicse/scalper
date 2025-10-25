@@ -141,7 +141,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted">
       <Card className="w-full max-w-md mx-4">
         <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-3xl font-bold">Scalper Bot</CardTitle>
+          <CardTitle className="text-3xl font-bold">Trading Bot</CardTitle>
           <CardDescription className="text-base">
             Sign in to manage your trading bots
           </CardDescription>

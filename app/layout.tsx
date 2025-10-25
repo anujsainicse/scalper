@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ApiInitializer } from '@/components/ApiInitializer';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Scalper Bot Dashboard",
-  description: "Cryptocurrency scalping bot management dashboard",
+  title: "Trading Bot Dashboard",
+  description: "Cryptocurrency trading bot management dashboard",
 };
 
 export default function RootLayout({
@@ -36,10 +38,14 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <WebSocketProvider>
-            {children}
-            <Toaster position="top-right" />
-          </WebSocketProvider>
+          <AuthProvider>
+            <ApiInitializer>
+              <WebSocketProvider>
+                {children}
+                <Toaster position="top-right" />
+              </WebSocketProvider>
+            </ApiInitializer>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

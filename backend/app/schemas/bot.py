@@ -67,6 +67,7 @@ class BotUpdate(BaseModel):
 
 class BotResponse(BotBase):
     id: UUID
+    user_id: UUID  # Added for multi-user support
     status: BotStatus
     pnl: float
     total_trades: int
@@ -93,6 +94,7 @@ class ActivityLogCreate(ActivityLogBase):
 
 class ActivityLogResponse(ActivityLogBase):
     id: UUID
+    user_id: UUID  # Added for multi-user support
     timestamp: datetime
 
     class Config:
@@ -117,6 +119,7 @@ class TradeCreate(TradeBase):
 
 class TradeResponse(TradeBase):
     id: UUID
+    user_id: UUID  # Added for multi-user support
     pnl: Optional[float]
     commission: float
     exchange_order_id: Optional[str]

@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from typing import List, Optional
 from uuid import UUID
 
 from app.db.session import get_db
-from app.models.bot import ActivityLog
+from app.models.user import User
+from app.models.bot import ActivityLog, Bot
 from app.schemas.bot import ActivityLogResponse, ActivityLogCreate
 from app.services.websocket_manager import ws_manager
+from app.dependencies.auth import get_current_active_user
 
 router = APIRouter()
 
@@ -18,12 +20,14 @@ async def get_activity_logs(
     limit: int = 1000,
     level: Optional[str] = None,
     bot_id: Optional[UUID] = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get activity logs with optional filtering
+    Get activity logs for the current user with optional filtering
     """
-    query = select(ActivityLog)
+    # Multi-user support: filter by current user
+    query = select(ActivityLog).where(ActivityLog.user_id == current_user.id)
 
     if level:
         query = query.where(ActivityLog.level == level)
@@ -42,12 +46,26 @@ async def get_activity_logs(
 @router.post("/", response_model=ActivityLogResponse)
 async def create_activity_log(
     log_data: ActivityLogCreate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Create a new activity log entry
+    Create a new activity log entry for the current user
     """
+    # Multi-user support: verify bot ownership if bot_id provided
+    if log_data.bot_id:
+        bot_result = await db.execute(
+            select(Bot).where(
+                Bot.id == log_data.bot_id,
+                Bot.user_id == current_user.id
+            )
+        )
+        bot = bot_result.scalar_one_or_none()
+        if not bot:
+            raise HTTPException(status_code=404, detail="Bot not found")
+
     log = ActivityLog(
+        user_id=current_user.id,  # Multi-user support
         level=log_data.level,
         message=log_data.message,
         bot_id=log_data.bot_id
@@ -71,12 +89,16 @@ async def create_activity_log(
 
 @router.delete("/", status_code=204)
 async def clear_all_logs(
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Clear all activity logs
+    Clear all activity logs for the current user
     """
-    await db.execute("DELETE FROM activity_logs")
+    # Multi-user support: only delete current user's logs
+    await db.execute(
+        delete(ActivityLog).where(ActivityLog.user_id == current_user.id)
+    )
     await db.commit()
 
     return None
@@ -85,14 +107,19 @@ async def clear_all_logs(
 @router.get("/count")
 async def get_logs_count(
     level: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get count of logs by level
+    Get count of logs by level for the current user
     """
+    # Multi-user support: filter by current user
     if level:
         result = await db.execute(
-            select(func.count(ActivityLog.id)).where(ActivityLog.level == level)
+            select(func.count(ActivityLog.id)).where(
+                ActivityLog.level == level,
+                ActivityLog.user_id == current_user.id
+            )
         )
         count = result.scalar()
         return {"level": level, "count": count}
@@ -103,12 +130,17 @@ async def get_logs_count(
 
     for log_level in levels:
         result = await db.execute(
-            select(func.count(ActivityLog.id)).where(ActivityLog.level == log_level)
+            select(func.count(ActivityLog.id)).where(
+                ActivityLog.level == log_level,
+                ActivityLog.user_id == current_user.id
+            )
         )
         counts[log_level] = result.scalar()
 
     # Total
-    total_result = await db.execute(select(func.count(ActivityLog.id)))
+    total_result = await db.execute(
+        select(func.count(ActivityLog.id)).where(ActivityLog.user_id == current_user.id)
+    )
     counts["TOTAL"] = total_result.scalar()
 
     return counts

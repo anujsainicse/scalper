@@ -60,9 +60,18 @@ export interface BotStatistics {
 // API Client
 class ApiClient {
   private baseUrl: string;
+  private getAccessToken?: () => Promise<string | null>;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Set the access token getter function
+   * This should be called from components that have access to AuthContext
+   */
+  setAccessTokenGetter(getter: () => Promise<string | null>) {
+    this.getAccessToken = getter;
   }
 
   private async request<T>(
@@ -72,12 +81,30 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     console.log(`[API-REQUEST] ${options?.method || 'GET'} ${url}`);
 
+    // Get access token if available
+    let accessToken: string | null = null;
+    if (this.getAccessToken) {
+      try {
+        accessToken = await this.getAccessToken();
+      } catch (error) {
+        console.warn('[API] Failed to get access token:', error);
+      }
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string>),
+    };
+
+    // Add Authorization header if token is available
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+      console.log('[API-REQUEST] Added Authorization header');
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
     });
 
     console.log(`[API-RESPONSE] Status: ${response.status} ${response.statusText}`);
@@ -85,6 +112,13 @@ class ApiClient {
 
     if (!response.ok) {
       console.error(`[API-RESPONSE] Request failed with status ${response.status}`);
+
+      // Handle 401 Unauthorized
+      if (response.status === 401) {
+        console.error('[API-RESPONSE] Unauthorized - token may be expired');
+        // Could trigger re-authentication here
+      }
+
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
       console.error(`[API-RESPONSE] Error details:`, error);
       throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);

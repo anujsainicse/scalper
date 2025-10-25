@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Supabase Settings (for multi-user authentication)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None  # Anon key for client-side
+    SUPABASE_SERVICE_KEY: Optional[str] = None  # Service role key for server-side
+    SUPABASE_JWT_SECRET: Optional[str] = None  # JWT secret for token verification
+
     # Exchange API Keys (Optional, for testing)
     BYBIT_API_KEY: Optional[str] = None
     BYBIT_SECRET_KEY: Optional[str] = None

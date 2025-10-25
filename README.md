@@ -1,6 +1,6 @@
-# 🤖 Scalper Bot Dashboard
+# 🤖 Trading Bot Platform
 
-A modern Next.js frontend application for managing cryptocurrency scalping bots with real-time monitoring, configuration, and comprehensive activity logging.
+A comprehensive multi-bot trading platform for cryptocurrency trading with real-time monitoring, advanced configuration, and automated strategies. Built with Next.js 15, TypeScript, and modern UI components.
 
 ![Next.js](https://img.shields.io/badge/Next.js-15.5.6-black)
 ![React](https://img.shields.io/badge/React-19.1.0-blue)
@@ -8,77 +8,233 @@ A modern Next.js frontend application for managing cryptocurrency scalping bots 
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.x-38B2AC)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## ✨ Features
+## 🌟 Overview
 
-### 📝 Bot Configuration Panel
-Create and configure scalping bots with an intuitive form interface:
-- **Ticker Selection**: Dropdown with popular trading pairs (BTC/USDT, ETH/USDT, etc.)
-- **Exchange Selection**: Choose from multiple exchanges (CoinDCX F, Binance)
-- **First Order Type**: Select BUY or SELL for initial order
-- **Quantity Options**: Preset quantities (1, 2, 3, 5, 10) or custom amount
-- **Price Configuration**: Set buy and sell prices with validation
-- **Trailing Stop**: Optional trailing percentage (0.1%, 0.5%, 1%)
-- **Infinite Loop**: Enable continuous automated trading
-- **Edit Mode**: Update existing bot configurations seamlessly
-- **Real-time Validation**: Instant feedback with grouped error alerts
+Trading Bot Platform is a full-stack application that enables traders to automate their cryptocurrency trading strategies using multiple bot types. The platform features a modern, responsive UI with real-time monitoring, comprehensive analytics, and seamless bot management.
 
-### 🎯 Active Bots Management
-Monitor and control all your bots with a responsive grid layout:
-- **Responsive Grid**: 1 column (mobile), 2 columns (tablet), 3 columns (desktop)
-- **Real-time Status**: Visual indicators for ACTIVE/STOPPED states
-- **PnL Tracking**: Color-coded profit/loss with trending indicators
-- **Individual Controls**: Start, Stop, Edit, or Delete each bot
-- **Emergency Stop**: Stop all bots with one click (with confirmation)
-- **Telegram Integration**: Connection status indicator with toggle
-- **Last Fill Time**: Relative time display (e.g., "2 mins ago")
-- **Trade Statistics**: Total trades count and performance metrics
-- **Smart Delete**: Double-click confirmation to prevent accidents
+## ✨ Key Features
 
-### 📊 Activity Log System
-Comprehensive logging with powerful filtering and export capabilities:
-- **Multi-level Filtering**: ALL, INFO, SUCCESS, WARNING, ERROR, TELEGRAM
-- **Auto-scroll**: Toggle automatic scrolling to latest logs
-- **CSV Export**: Download complete activity history
-- **Color-coded Entries**: Visual distinction by log level
-- **Timestamp Display**: HH:MM:SS format for precise tracking
-- **Clear Function**: Remove all logs with confirmation
-- **Infinite Scroll**: Handle thousands of log entries efficiently
+### 🏠 Unified Dashboard
+- **Homepage Overview**: Central hub displaying all bot types and performance metrics
+- **Stats Cards**: Real-time tracking of total bots, PnL, and daily performance
+- **Bot Type Selection**: Quick access to all available trading strategies
+- **Quick Start Guide**: Step-by-step onboarding for new users
 
-### ⚙️ Configuration System
-Centralized configuration file for easy customization:
-- **bot-config.ts**: Single file for all dropdown options
-- **Exchanges**: Add/remove trading platforms
-- **Quantities**: Customize trading amounts
-- **Trailing Percentages**: Configure stop-loss options
-- **Popular Tickers**: Pre-defined trading pairs
-- **Comprehensive Documentation**: Detailed README in config folder
+### 🤖 Multiple Bot Types
 
-## 🚀 Tech Stack
+#### ⚡ Scalper Bot (Active)
+Fast-paced trading for quick profits in volatile markets:
+- Quick buy/sell execution
+- Trailing stop-loss support
+- Real-time price tracking
+- Infinite loop trading mode
+- Configurable profit targets
 
-| Category | Technology |
-|----------|-----------|
-| **Framework** | Next.js 15.5.6 with App Router & Turbopack |
-| **Language** | TypeScript 5.x |
-| **UI Library** | shadcn/ui (Radix UI primitives) |
-| **Styling** | Tailwind CSS 4.x |
-| **State Management** | Zustand 5.0.8 |
-| **Icons** | Lucide React 0.546.0 |
-| **Notifications** | React Hot Toast 2.6.0 |
-| **Date Utilities** | date-fns 4.1.0 |
-| **Theme** | next-themes 0.4.6 |
-| **Utilities** | clsx, tailwind-merge, CVA |
+#### 📊 Grid Bot (Coming Soon)
+Automated grid trading for range-bound markets:
+- Configurable grid levels
+- Arithmetic and geometric strategies
+- Dynamic adjustment based on volatility
+- Buy low, sell high automation
 
-## 📦 Installation
+#### 💰 DCA Bot (Coming Soon)
+Dollar-cost averaging for long-term strategies:
+- Scheduled recurring investments
+- Customizable intervals (hourly, daily, weekly)
+- Smart entry timing
+- Portfolio rebalancing
+
+#### 📉 Dip Bot (Coming Soon)
+Capitalize on price dips:
+- Configurable dip thresholds
+- Volume confirmation
+- Multi-timeframe analysis
+- Automatic recovery targets
+
+#### 🚀 Momentum Bot (Coming Soon)
+Trend-following with momentum indicators:
+- RSI, MACD tracking
+- Trend strength analysis
+- Dynamic entry/exit signals
+- Customizable thresholds
+
+### 🎨 Modern UI/UX
+
+#### Collapsible Sidebar Navigation
+- **Default Collapsed**: Icon-only view for maximum screen space
+- **Expandable**: Full labels and descriptions on demand
+- **Active Indicators**: Gradient highlights for current bot
+- **Home Navigation**: Quick access to dashboard overview
+
+#### Dynamic Header
+- **Context-Aware Title**: Shows current bot type
+- **Gradient Themes**: Unique colors for each bot type
+- **Collapse Control**: Toggle sidebar from header
+- **User Menu**: Profile, settings, and logout access
+
+#### User Menu Dropdown
+- **Profile Management**: View user information
+- **Theme Selector**: Light/Dark mode toggle
+- **Exchange Connect**: Manage exchange API keys
+- **Telegram Integration**: Enable notifications
+- **Quick Logout**: Secure session management
+
+### 🔐 Authentication & Security
+- **Supabase Auth**: Secure email/password and OAuth
+- **Google Sign-In**: One-click authentication
+- **Password Reset**: Email-based recovery flow
+- **Protected Routes**: Middleware-based access control
+- **Session Management**: Persistent login with JWT
+
+### 📝 Bot Configuration (Scalper)
+- **Ticker Selection**: Popular trading pairs dropdown
+- **Exchange Selection**: Multiple exchange support
+- **Order Types**: BUY or SELL first
+- **Price Settings**: Buy/sell price configuration
+- **Quantity Options**: Preset or custom amounts
+- **Trailing Stop**: Optional percentage-based stops
+- **Leverage Control**: Adjustable leverage settings
+- **Real-time Validation**: Instant feedback on inputs
+
+### 🎯 Active Bot Management
+- **Grid Layout**: Responsive 1-3 column display
+- **Status Indicators**: Visual ACTIVE/STOPPED states
+- **PnL Tracking**: Color-coded profit/loss display
+- **Individual Controls**: Start, stop, edit, delete
+- **Bulk Actions**: Emergency stop all bots
+- **Trade Statistics**: Count and performance metrics
+- **Last Activity**: Relative time display
+
+### 📊 Activity Monitoring
+
+#### Activity Logs
+- **Multi-level Filtering**: INFO, SUCCESS, WARNING, ERROR, TELEGRAM
+- **Auto-scroll Toggle**: Follow latest activity
+- **CSV Export**: Download complete history
+- **Color-coded Entries**: Visual log categorization
+- **Timestamp Display**: Precise activity tracking
+- **Infinite Scroll**: Handle thousands of entries
+
+#### Orders Panel
+- **Order History**: Complete order tracking
+- **Status Display**: Pending, filled, cancelled
+- **Price Information**: Entry and exit prices
+- **Profit Calculation**: Per-order PnL
+
+#### WebSocket Monitor
+- **Real-time Connection**: Live market data
+- **Connection Status**: Visual indicators
+- **Data Streaming**: Tick-by-tick updates
+- **Auto-reconnect**: Resilient connections
+
+#### Analytics Dashboard
+- **Performance Charts**: Visual profit tracking
+- **Win Rate Analysis**: Success metrics
+- **Trade Distribution**: Volume analysis
+- **Historical Data**: Time-series performance
+
+## 🏗️ Architecture
+
+### Frontend Structure
+```
+app/
+├── (dashboard)/              # Protected dashboard routes
+│   ├── layout.tsx           # Dashboard layout with sidebar
+│   ├── home/                # Homepage
+│   ├── scalper/             # Scalper bot page
+│   ├── grid/                # Grid bot page
+│   ├── dca/                 # DCA bot page
+│   ├── dip/                 # Dip bot page
+│   └── momentum/            # Momentum bot page
+├── auth/
+│   ├── callback/            # OAuth callback handler
+│   └── reset-password/      # Password reset page
+├── login/                   # Login/signup page
+├── layout.tsx               # Root layout
+└── page.tsx                 # Root redirect
+
+components/
+├── layout/
+│   └── Sidebar.tsx          # Navigation sidebar
+├── ui/                      # shadcn/ui components
+├── BotConfiguration.tsx     # Bot config form
+├── ActiveBots.tsx           # Bot management grid
+├── ActivityLog.tsx          # Activity logging
+├── Orders.tsx               # Order history
+├── WebSocketMonitor.tsx     # WebSocket status
+├── UserMenu.tsx             # User dropdown menu
+├── ProtectedRoute.tsx       # Auth guard
+└── TelegramConnect.tsx      # Telegram integration
+
+store/
+└── botStore.ts              # Zustand state management
+
+contexts/
+├── AuthContext.tsx          # Authentication context
+└── WebSocketContext.tsx     # WebSocket management
+
+lib/
+├── api.ts                   # API client
+└── supabase/                # Supabase configuration
+
+types/
+└── bot.ts                   # TypeScript definitions
+
+config/
+└── bot-config.ts            # Configuration constants
+```
+
+### Backend API (FastAPI)
+```
+backend/
+├── app/
+│   ├── api/v1/
+│   │   └── endpoints/
+│   │       ├── auth.py      # Authentication
+│   │       ├── bots.py      # Bot CRUD
+│   │       ├── logs.py      # Activity logs
+│   │       └── orders.py    # Order management
+│   ├── models/              # Database models
+│   ├── schemas/             # Pydantic schemas
+│   └── core/                # Config & DB
+└── requirements.txt
+```
+
+### State Management
+
+#### Zustand Store
+```typescript
+interface BotStore {
+  // State
+  bots: ActiveBot[]
+  logs: ActivityLog[]
+  editingBotId: string | null
+  telegramConnected: boolean
+
+  // Actions
+  addBot: (formData: BotFormData) => Promise<void>
+  removeBot: (id: string) => Promise<void>
+  updateBot: (id: string, updates: Partial<ActiveBot>) => Promise<void>
+  toggleBot: (id: string) => Promise<void>
+  stopAllBots: () => Promise<void>
+  addLog: (level: LogLevel, message: string) => void
+  clearLogs: () => Promise<void>
+}
+```
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js** 18.x or higher
-- **npm** (comes with Node.js)
+- Node.js 18.x or higher
+- Python 3.11+ (for backend)
+- PostgreSQL 15+
+- Redis 7+
 
-### Setup
+### Frontend Setup
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/scalper.git
+git clone https://github.com/anujsainicse/scalper.git
 cd scalper
 ```
 
@@ -87,394 +243,188 @@ cd scalper
 npm install
 ```
 
-3. **Run development server**
+3. **Configure environment**
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+```
+
+4. **Run development server**
 ```bash
 npm run dev
 ```
 
-4. **Open in browser**
+5. **Open browser**
 Navigate to [http://localhost:3000](http://localhost:3000)
 
-## 📁 Project Structure
+### Backend Setup
 
-```
-scalper/
-├── app/
-│   ├── page.tsx              # Main dashboard (3-panel layout)
-│   ├── layout.tsx            # Root layout with metadata
-│   ├── globals.css           # Global styles & Tailwind config
-│   └── favicon.ico           # App icon
-│
-├── components/
-│   ├── BotConfiguration.tsx  # Bot creation/edit form
-│   ├── ActiveBots.tsx        # Bot grid display with controls
-│   ├── ActivityLog.tsx       # Logging panel with filters
-│   └── ui/                   # shadcn/ui components
-│       ├── alert.tsx         # Alert component
-│       ├── badge.tsx         # Badge component
-│       ├── button.tsx        # Button component
-│       ├── card.tsx          # Card component
-│       ├── checkbox.tsx      # Checkbox component
-│       ├── input.tsx         # Input component
-│       ├── label.tsx         # Label component
-│       ├── radio-group.tsx   # Radio group component
-│       └── select.tsx        # Select dropdown component
-│
-├── store/
-│   └── botStore.ts           # Zustand state management
-│
-├── types/
-│   └── bot.ts                # TypeScript interfaces & types
-│
-├── utils/
-│   └── formatters.ts         # Utility functions (format, validate)
-│
-├── config/
-│   ├── bot-config.ts         # Centralized configuration
-│   └── README.md             # Configuration guide
-│
-├── components.json           # shadcn/ui configuration
-├── tailwind.config.ts        # Tailwind configuration
-├── tsconfig.json             # TypeScript configuration
-└── package.json              # Project dependencies
+1. **Navigate to backend**
+```bash
+cd backend
 ```
 
-## 🎮 Usage Guide
+2. **Create virtual environment**
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-### Creating a Bot
+3. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
 
-1. **Fill in Bot Configuration Form**:
-   - **Ticker**: Select from dropdown (BTC/USDT, ETH/USDT, etc.)
-   - **Exchange**: Choose your trading platform
-   - **First Order**: Select BUY or SELL
-   - **Quantity**: Choose preset or custom amount
-   - **Buy Price**: Enter buy price (must be > 0)
-   - **Sell Price**: Enter sell price (must be > buy price)
-   - **Trailing %**: Optional (0.1% to 3%)
-   - **Infinite Loop**: Check for continuous trading
+4. **Configure environment**
+```bash
+cp .env.example .env
+```
 
-2. **Click "Start Bot"**:
-   - Bot is created in ACTIVE state immediately
-   - Activity log records the action
-   - Bot appears in the Active Bots grid
+Edit `.env`:
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/trading_bot
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY=your-secret-key
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_service_key
+```
 
-### Managing Bots
+5. **Start server**
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-#### Individual Bot Actions
-- **Start/Stop**: Toggle bot activity state
-- **Edit**: Load bot settings into configuration form
-  - Form changes to "Update Bot" mode
-  - Cancel button appears
-  - Make changes and click "Update Bot"
-- **Delete**: Click once, then confirm by clicking again
+6. **Access API docs**
+Navigate to [http://localhost:8000/docs](http://localhost:8000/docs)
 
-#### Bulk Actions
-- **Stop All Bots**: Emergency stop button (with confirmation)
-- **Telegram Toggle**: Simulate connection status
+## 📚 Documentation
 
-#### Bot Card Information
-Each bot card displays:
-- Ticker symbol and exchange
-- Current status (ACTIVE/STOPPED)
-- Buy and sell prices
-- Trading quantity
-- Last fill time (relative)
-- Profit/Loss (PnL) with trend indicator
-- Total trades executed
+### API Endpoints
 
-### Activity Logs
+#### Authentication
+```
+POST   /api/v1/auth/register        # Register new user
+POST   /api/v1/auth/login           # User login
+POST   /api/v1/auth/refresh         # Refresh token
+POST   /api/v1/auth/logout          # User logout
+```
 
-#### Filtering
-- Click tabs to filter by level: **ALL**, **INFO**, **SUCCESS**, **WARNING**, **ERROR**, **TELEGRAM**
-- Active filter is highlighted
-- Counter badge shows entries per level
+#### Bots
+```
+GET    /api/v1/bots                 # List all bots
+POST   /api/v1/bots                 # Create bot
+GET    /api/v1/bots/{id}            # Get bot details
+PUT    /api/v1/bots/{id}            # Update bot
+DELETE /api/v1/bots/{id}            # Delete bot
+POST   /api/v1/bots/{id}/start      # Start bot
+POST   /api/v1/bots/{id}/stop       # Stop bot
+POST   /api/v1/bots/{id}/toggle     # Toggle status
+POST   /api/v1/bots/stop-all        # Emergency stop
+```
 
-#### Features
-- **Auto-scroll**: Toggle to automatically scroll to newest logs
-- **Export CSV**: Download complete log history
-- **Clear Logs**: Remove all entries (with confirmation)
+#### Activity Logs
+```
+GET    /api/v1/logs                 # Get logs
+POST   /api/v1/logs                 # Create log
+DELETE /api/v1/logs                 # Clear logs
+GET    /api/v1/logs/count           # Log counts
+```
 
-## 🔧 Customization
+### Configuration
 
-### Adding Exchanges
-
+#### Adding a New Exchange
 Edit `config/bot-config.ts`:
-
 ```typescript
 export const EXCHANGES: ConfigItem[] = [
   { value: 'CoinDCX F', label: 'CoinDCX F' },
   { value: 'Binance', label: 'Binance' },
-  { value: 'Kraken', label: 'Kraken' },        // New exchange
-  { value: 'Coinbase', label: 'Coinbase' },    // New exchange
+  { value: 'Kraken', label: 'Kraken' }, // New exchange
 ];
 ```
 
-### Adding Quantities
-
-Edit `config/bot-config.ts`:
-
+#### Adding a New Ticker
 ```typescript
-export const QUANTITIES: ConfigItem[] = [
-  { value: 1, label: '1' },
-  { value: 5, label: '5' },
-  { value: 10, label: '10' },
-  { value: 25, label: '25' },      // New quantity
-  { value: 50, label: '50' },      // New quantity
-  { value: 0, label: 'Custom' },   // Keep for custom input
-];
-```
-
-### Adding Trailing Percentages
-
-Edit `config/bot-config.ts`:
-
-```typescript
-export const TRAILING_PERCENTAGES: ConfigItem[] = [
-  { value: 'none', label: 'None' },      // Required
-  { value: '0.1', label: '0.1%' },
-  { value: '0.5', label: '0.5%' },
-  { value: '1', label: '1%' },
-  { value: '2', label: '2%' },           // New percentage
-  { value: '3', label: '3%' },           // New percentage
-];
-```
-
-### Adding Tickers
-
-Edit `config/bot-config.ts`:
-
-```typescript
-export const POPULAR_TICKERS: string[] = [
+export const POPULAR_TICKERS = [
   'BTC/USDT',
   'ETH/USDT',
-  'SOL/USDT',
-  'LINK/USDT',    // New ticker
-  'UNI/USDT',     // New ticker
+  'SOL/USDT', // New ticker
 ];
 ```
 
-### Theme Colors
+## 🎨 UI Components
 
-Edit `app/globals.css`:
+### shadcn/ui Components Used
+- `Button` - Actions and controls
+- `Card` - Content containers
+- `Input` - Form inputs
+- `Select` - Dropdown menus
+- `Checkbox` - Boolean toggles
+- `RadioGroup` - Option selection
+- `Alert` - Notifications and warnings
+- `Badge` - Status indicators
+- `DropdownMenu` - Context menus
+- `Tabs` - Content organization
 
-```css
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    /* ... more CSS variables */
-  }
+### Custom Components
+- `BotConfiguration` - Bot creation form
+- `ActiveBots` - Bot management grid
+- `ActivityLog` - Log viewer with filters
+- `Sidebar` - Collapsible navigation
+- `UserMenu` - User dropdown
+- `TelegramConnect` - Telegram modal
 
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    /* ... more CSS variables */
-  }
-}
-```
+## 🔧 Development
 
-## 🏗️ Building for Production
+### Code Style
+- **TypeScript**: Strict mode enabled
+- **ESLint**: Configured for Next.js
+- **Prettier**: Code formatting
+- **Conventions**: camelCase for variables, PascalCase for components
 
+### Testing
 ```bash
-# Build the application
+# Run tests (when configured)
+npm test
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+```
+
+### Building for Production
+```bash
+# Build frontend
 npm run build
-
-# Start production server
 npm start
+
+# Build backend
+# (Deploy with Docker or ASGI server)
 ```
 
-The optimized build output will be in the `.next` directory.
+## 🚢 Deployment
 
-## 🧩 Key Components
+### Frontend (Vercel)
+1. Connect GitHub repository
+2. Configure environment variables
+3. Deploy automatically on push
 
-### BotConfiguration (`components/BotConfiguration.tsx`)
-- Form with real-time validation
-- Create and edit bot configurations
-- Dynamic form fields (custom quantity toggle)
-- Error grouping and display
-- Integration with Zustand store
-- Cancel edit mode functionality
-
-**Key Features**:
-- Dropdown selections for all major fields
-- Validation before submission
-- Edit mode with pre-filled values
-- Success/error toast notifications
-
-### ActiveBots (`components/ActiveBots.tsx`)
-- Responsive grid layout (1/2/3 columns)
-- Individual bot cards with full controls
-- Emergency stop all functionality
-- Telegram connection indicator
-- Delete confirmation pattern (double-click)
-- Edit button for configuration updates
-
-**Key Features**:
-- Real-time status updates
-- PnL visualization with trend indicators
-- Last fill time with relative formatting
-- Infinite loop indicator badge
-
-### ActivityLog (`components/ActivityLog.tsx`)
-- Tab-based filtering by log level
-- Auto-scroll toggle for real-time monitoring
-- CSV export functionality
-- Color-coded entries by severity
-- Timestamp formatting (HH:MM:SS)
-- Clear all with confirmation
-
-**Key Features**:
-- Filter by: ALL, INFO, SUCCESS, WARNING, ERROR, TELEGRAM
-- Counter badges showing entries per level
-- Optimized rendering for large datasets
-
-### Zustand Store (`store/botStore.ts`)
-Centralized state management with the following actions:
-
-**Bot Actions**:
-- `addBot`: Create new bot (ACTIVE by default)
-- `removeBot`: Delete bot with logging
-- `updateBot`: Update specific bot properties
-- `updateBotFromForm`: Update from form data
-- `toggleBot`: Switch between ACTIVE/STOPPED
-- `stopAllBots`: Emergency stop all bots
-- `setEditingBot`: Set bot for editing
-
-**Log Actions**:
-- `addLog`: Add new activity log entry
-- `clearLogs`: Remove all logs
-
-**Other**:
-- `toggleTelegram`: Toggle Telegram connection status
-
-## 📋 Form Validation
-
-The bot configuration form validates:
-
-| Field | Rules |
-|-------|-------|
-| **Ticker** | Must match format: `XXX/XXX` (e.g., BTC/USDT) |
-| **Exchange** | Required, must be from dropdown |
-| **Quantity** | Must be > 0 (when custom) |
-| **Buy Price** | Must be > 0 |
-| **Sell Price** | Must be > buy price |
-| **Trailing %** | Must be between 0.1% and 3% (if set) |
-
-Validation errors are displayed in a grouped alert above the submit button.
-
-## 🎨 UI/UX Features
-
-### Responsive Design
-- **Mobile** (< 768px): Single column, stacked panels
-- **Tablet** (768px - 1280px): 2-column bot grid
-- **Desktop** (> 1280px): 3-column bot grid, full layout
-
-### Dark Theme
-- Built with dark-first approach
-- Consistent color scheme throughout
-- High contrast for readability
-- Custom scrollbar styling
-
-### Accessibility
-- Semantic HTML elements
-- ARIA labels where needed
-- Keyboard navigation support
-- Focus indicators
-
-### User Feedback
-- Toast notifications for all actions
-- Color-coded status indicators
-- Loading states (where applicable)
-- Confirmation dialogs for destructive actions
-
-## 🔄 State Management Flow
-
+### Backend (Docker)
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
-User Action → Component Event Handler → Zustand Action
-                                             ↓
-                                    Update Store State
-                                             ↓
-                                    Trigger Re-render
-                                             ↓
-                           Update UI + Add Activity Log
-                                             ↓
-                                  Show Toast Notification
-```
-
-## 📝 Type Definitions
-
-### Core Types (`types/bot.ts`)
-
-```typescript
-export type Exchange = 'CoinDCX F' | 'Binance';
-export type OrderSide = 'BUY' | 'SELL';
-export type BotStatus = 'ACTIVE' | 'STOPPED';
-export type LogLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'TELEGRAM';
-
-export interface BotFormData {
-  ticker: string;
-  exchange: Exchange;
-  firstOrder: OrderSide;
-  quantity: number;
-  customQuantity?: number;
-  buyPrice: number;
-  sellPrice: number;
-  trailingPercent?: number;
-  infiniteLoop: boolean;
-}
-
-export interface ActiveBot extends BotConfig {
-  id: string;
-  status: BotStatus;
-  pnl: number;
-  totalTrades: number;
-  lastFillTime?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ActivityLog {
-  id: string;
-  timestamp: Date;
-  level: LogLevel;
-  message: string;
-  botId?: string;
-}
-```
-
-## 🚀 Future Enhancements
-
-### Backend Integration
-- [ ] Connect to real trading API
-- [ ] WebSocket for live price updates
-- [ ] Historical trade data persistence
-- [ ] User authentication & authorization
-
-### Analytics & Reporting
-- [ ] Performance dashboard with charts
-- [ ] Profit/loss graphs over time
-- [ ] Win rate statistics
-- [ ] Risk metrics visualization
-
-### Advanced Features
-- [ ] Bot templates for quick setup
-- [ ] Import/Export configurations (JSON)
-- [ ] Multi-bot strategy coordination
-- [ ] Advanced risk management rules
-- [ ] Backtesting with historical data
-- [ ] Paper trading mode
-
-### UI/UX Improvements
-- [ ] Light/Dark theme toggle
-- [ ] Multi-language support (i18n)
-- [ ] Bot scheduling (time-based activation)
-- [ ] Keyboard shortcuts
-- [ ] Customizable dashboard layout
-- [ ] Mobile app (React Native)
 
 ## 🤝 Contributing
 
@@ -486,32 +436,65 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 Author
-
-**Anuj Saini**
-- GitHub: [@anujsainicse](https://github.com/anujsainicse)
-
 ## 🙏 Acknowledgments
 
-- [Next.js](https://nextjs.org/) - The React Framework
-- [shadcn/ui](https://ui.shadcn.com/) - Beautiful UI components
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [Next.js](https://nextjs.org/) - React framework
+- [shadcn/ui](https://ui.shadcn.com/) - UI components
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
 - [Zustand](https://zustand-demo.pmnd.rs/) - State management
-- [Lucide](https://lucide.dev/) - Beautiful icons
-- [Radix UI](https://www.radix-ui.com/) - Unstyled, accessible components
+- [Supabase](https://supabase.com/) - Authentication
+- [Lucide React](https://lucide.dev/) - Icons
 
-## 📞 Support
+## 📧 Contact
 
-For issues, questions, or feature requests:
-- Open an issue on [GitHub Issues](https://github.com/yourusername/scalper/issues)
-- Email: your.email@example.com
+**Author**: Anuj Saini
+**GitHub**: [@anujsainicse](https://github.com/anujsainicse)
+**Repository**: [Trading Bot Platform](https://github.com/anujsainicse/scalper)
+
+## 🗺️ Roadmap
+
+### Phase 1: Core Platform ✅
+- [x] Multi-bot architecture
+- [x] Collapsible sidebar navigation
+- [x] Homepage dashboard
+- [x] User authentication
+- [x] Scalper bot implementation
+
+### Phase 2: Grid Bot
+- [ ] Grid configuration UI
+- [ ] Grid level management
+- [ ] Arithmetic/Geometric strategies
+- [ ] Real-time grid visualization
+
+### Phase 3: DCA Bot
+- [ ] Investment schedule configuration
+- [ ] Interval-based buying
+- [ ] Portfolio rebalancing
+- [ ] Historical DCA analysis
+
+### Phase 4: Dip Bot
+- [ ] Dip detection algorithm
+- [ ] Volume confirmation
+- [ ] Multi-timeframe analysis
+- [ ] Recovery target automation
+
+### Phase 5: Momentum Bot
+- [ ] Indicator integration (RSI, MACD)
+- [ ] Trend detection
+- [ ] Entry/exit signal generation
+- [ ] Momentum scoring
+
+### Phase 6: Advanced Features
+- [ ] Backtesting engine
+- [ ] Strategy optimization
+- [ ] Portfolio analytics
+- [ ] Risk management tools
+- [ ] Paper trading mode
 
 ---
 
-**⚠️ Disclaimer**: This is a demo/educational project. Use at your own risk. Always test thoroughly before using real funds in cryptocurrency trading.
-
-Made with ❤️ by Anuj Saini
+**Built with ❤️ by Anuj Saini**

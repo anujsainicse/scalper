@@ -635,7 +635,7 @@ export const BotConfiguration: React.FC = () => {
               <Label htmlFor="trailing">Trailing % (Optional)</Label>
               <Select
                 value={formData.trailingPercent?.toString() || 'none'}
-                onValueChange={(value) => handleInputChange('trailingPercent', value === 'none' ? undefined : Number(value))}
+                onValueChange={(value) => handleInputChange('trailingPercent', value === 'none' ? 0 : Number(value))}
               >
                 <SelectTrigger id="trailing">
                   <SelectValue />

@@ -30,6 +30,9 @@ class Order(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
 
+    # User Relationship (MULTI-USER SUPPORT - for query optimization)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
     # Foreign Key to Bot
     bot_id = Column(UUID(as_uuid=True), ForeignKey("bots.id", ondelete="CASCADE"), nullable=False, index=True)
 
@@ -63,8 +66,9 @@ class Order(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Relationship to Bot
+    # Relationships
+    user = relationship("User")
     bot = relationship("Bot", back_populates="orders")
 
     def __repr__(self):
-        return f"<Order(id={self.id}, symbol={self.symbol}, side={self.side}, status={self.status})>"
+        return f"<Order(id={self.id}, user_id={self.user_id}, symbol={self.symbol}, side={self.side}, status={self.status})>"

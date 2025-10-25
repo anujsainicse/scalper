@@ -6,7 +6,9 @@ from uuid import UUID
 import logging
 
 from app.db.session import get_db
+from app.models.user import User
 from app.models.bot import Bot, ActivityLog, BotStatus, OrderSide as BotOrderSide
+from app.dependencies.auth import get_current_active_user
 from app.models.order import Order as OrderModel, OrderStatus as DBOrderStatus, OrderType as DBOrderType
 from app.schemas.bot import (
     BotCreate,
@@ -64,12 +66,14 @@ async def get_bots(
     skip: int = 0,
     limit: int = 100,
     status: str = None,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get all bots with optional filtering
+    Get all bots for the current user with optional filtering
     """
-    query = select(Bot)
+    # Filter by user_id for multi-user support
+    query = select(Bot).where(Bot.user_id == current_user.id)
 
     if status:
         query = query.where(Bot.status == status)
@@ -85,13 +89,15 @@ async def get_bots(
 @router.post("/", response_model=BotResponse, status_code=status.HTTP_201_CREATED)
 async def create_bot(
     bot_data: BotCreate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Create a new bot and place initial order on exchange
     """
-    # Create bot with ACTIVE status
+    # Create bot with ACTIVE status and user_id
     bot = Bot(
+        user_id=current_user.id,  # Multi-user support
         ticker=bot_data.ticker,
         exchange=bot_data.exchange,
         first_order=bot_data.first_order,
@@ -140,6 +146,7 @@ async def create_bot(
 
         # Create order record in database
         db_order = OrderModel(
+            user_id=current_user.id,  # Multi-user support
             bot_id=bot.id,
             exchange_order_id=order_response.order_id,
             symbol=bot.ticker,
@@ -156,6 +163,7 @@ async def create_bot(
 
         # Create activity log
         log = ActivityLog(
+            user_id=current_user.id,  # Multi-user support
             bot_id=bot.id,
             level="SUCCESS",
             message=f"Bot started and {order_side.value} order placed at ${order_price}"
@@ -186,6 +194,7 @@ async def create_bot(
         bot.status = BotStatus.ERROR
 
         log = ActivityLog(
+            user_id=current_user.id,  # Multi-user support
             bot_id=bot.id,
             level="ERROR",
             message=f"Failed to start bot: {str(ve)}"
@@ -206,6 +215,7 @@ async def create_bot(
         bot.status = BotStatus.ERROR
 
         log = ActivityLog(
+            user_id=current_user.id,  # Multi-user support
             bot_id=bot.id,
             level="ERROR",
             message=f"Failed to place order: {str(e)}"
@@ -223,12 +233,18 @@ async def create_bot(
 @router.get("/{bot_id}", response_model=BotResponse)
 async def get_bot(
     bot_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get a specific bot by ID
+    Get a specific bot by ID (user ownership check)
     """
-    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    result = await db.execute(
+        select(Bot).where(
+            Bot.id == bot_id,
+            Bot.user_id == current_user.id  # Multi-user support: ownership check
+        )
+    )
     bot = result.scalar_one_or_none()
 
     if not bot:
@@ -241,10 +257,11 @@ async def get_bot(
 async def update_bot(
     bot_id: UUID,
     bot_data: BotUpdate,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Update a bot's configuration and manage exchange orders
+    Update a bot's configuration and manage exchange orders (user ownership check)
 
     If bot is ACTIVE:
     - Cancels all pending orders on exchange
@@ -256,11 +273,17 @@ async def update_bot(
     """
     logger.info(f"[UPDATE-BOT] Received update request for bot_id: {bot_id}")
 
-    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    # Multi-user support: ownership check
+    result = await db.execute(
+        select(Bot).where(
+            Bot.id == bot_id,
+            Bot.user_id == current_user.id
+        )
+    )
     bot = result.scalar_one_or_none()
 
     if not bot:
-        logger.warning(f"[UPDATE-BOT] Bot {bot_id} not found")
+        logger.warning(f"[UPDATE-BOT] Bot {bot_id} not found for user {current_user.email}")
         raise HTTPException(status_code=404, detail="Bot not found")
 
     is_active = bot.status == BotStatus.ACTIVE
@@ -454,18 +477,25 @@ async def update_bot(
 @router.delete("/{bot_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_bot(
     bot_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Delete a bot and cancel all its open orders
+    Delete a bot and cancel all its open orders (user ownership check)
     """
     logger.info(f"[DELETE-BOT] Received delete request for bot_id: {bot_id}")
 
-    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    # Multi-user support: ownership check
+    result = await db.execute(
+        select(Bot).where(
+            Bot.id == bot_id,
+            Bot.user_id == current_user.id
+        )
+    )
     bot = result.scalar_one_or_none()
 
     if not bot:
-        logger.warning(f"[DELETE-BOT] Bot {bot_id} not found")
+        logger.warning(f"[DELETE-BOT] Bot {bot_id} not found for user {current_user.email}")
         raise HTTPException(status_code=404, detail="Bot not found")
 
     logger.info(f"[DELETE-BOT] Found bot: {bot.ticker} on {bot.exchange.value}")
@@ -556,12 +586,19 @@ async def delete_bot(
 @router.post("/{bot_id}/start", response_model=BotResponse)
 async def start_bot(
     bot_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Start a bot and place initial order on exchange
+    Start a bot and place initial order on exchange (user ownership check)
     """
-    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    # Multi-user support: ownership check
+    result = await db.execute(
+        select(Bot).where(
+            Bot.id == bot_id,
+            Bot.user_id == current_user.id
+        )
+    )
     bot = result.scalar_one_or_none()
 
     if not bot:
@@ -585,6 +622,7 @@ async def start_bot(
 
         # Create activity log
         log = ActivityLog(
+            user_id=current_user.id,  # Multi-user support
             bot_id=bot.id,
             level="SUCCESS",
             message=f"Bot started and {order_side.value} order placed at ${order_price}"
@@ -604,6 +642,7 @@ async def start_bot(
         bot.status = BotStatus.ERROR
 
         log = ActivityLog(
+            user_id=current_user.id,  # Multi-user support
             bot_id=bot.id,
             level="ERROR",
             message=f"Failed to start bot: {str(ve)}"
@@ -624,6 +663,7 @@ async def start_bot(
         bot.status = BotStatus.ERROR
 
         log = ActivityLog(
+            user_id=current_user.id,  # Multi-user support
             bot_id=bot.id,
             level="ERROR",
             message=f"Failed to place order: {str(e)}"
@@ -641,12 +681,19 @@ async def start_bot(
 @router.post("/{bot_id}/stop", response_model=BotResponse)
 async def stop_bot(
     bot_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Stop a bot and cancel all pending orders
+    Stop a bot and cancel all pending orders (user ownership check)
     """
-    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    # Multi-user support: ownership check
+    result = await db.execute(
+        select(Bot).where(
+            Bot.id == bot_id,
+            Bot.user_id == current_user.id
+        )
+    )
     bot = result.scalar_one_or_none()
 
     if not bot:
@@ -696,6 +743,7 @@ async def stop_bot(
             # Exchange configuration error - still stop bot but log the error
             logger.error(f"Exchange configuration error while stopping bot {bot.id}: {ve}")
             log = ActivityLog(
+                user_id=current_user.id,  # Multi-user support
                 bot_id=bot.id,
                 level="WARNING",
                 message=f"Could not cancel orders: {str(ve)}"
@@ -717,6 +765,7 @@ async def stop_bot(
         log_message = f"Bot stopped (no pending orders)"
 
     log = ActivityLog(
+        user_id=current_user.id,  # Multi-user support
         bot_id=bot.id,
         level="WARNING",
         message=log_message
@@ -752,12 +801,19 @@ async def stop_bot(
 @router.post("/{bot_id}/toggle", response_model=BotResponse)
 async def toggle_bot(
     bot_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Toggle bot status (ACTIVE <-> STOPPED)
+    Toggle bot status (ACTIVE <-> STOPPED) - user ownership check
     """
-    result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    # Multi-user support: ownership check
+    result = await db.execute(
+        select(Bot).where(
+            Bot.id == bot_id,
+            Bot.user_id == current_user.id
+        )
+    )
     bot = result.scalar_one_or_none()
 
     if not bot:
@@ -769,6 +825,7 @@ async def toggle_bot(
 
     log_level = "SUCCESS" if new_status == BotStatus.ACTIVE else "WARNING"
     log = ActivityLog(
+        user_id=current_user.id,  # Multi-user support
         bot_id=bot.id,
         level=log_level,
         message=f"Bot {new_status.value.lower()} for {bot.ticker}"
@@ -790,12 +847,19 @@ async def toggle_bot(
 
 @router.post("/stop-all", status_code=status.HTTP_200_OK)
 async def stop_all_bots(
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Stop all active bots
+    Stop all active bots for the current user
     """
-    result = await db.execute(select(Bot).where(Bot.status == BotStatus.ACTIVE))
+    # Multi-user support: only stop current user's bots
+    result = await db.execute(
+        select(Bot).where(
+            Bot.status == BotStatus.ACTIVE,
+            Bot.user_id == current_user.id
+        )
+    )
     bots = result.scalars().all()
 
     for bot in bots:
@@ -803,6 +867,7 @@ async def stop_all_bots(
 
     # Create activity log
     log = ActivityLog(
+        user_id=current_user.id,  # Multi-user support
         level="ERROR",
         message="Emergency stop - All bots stopped"
     )
@@ -815,18 +880,25 @@ async def stop_all_bots(
 
 @router.get("/statistics/summary", response_model=BotStatistics)
 async def get_statistics(
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get bot statistics
+    Get bot statistics for the current user
     """
+    # Multi-user support: filter by current user
     # Total bots
-    total_result = await db.execute(select(func.count(Bot.id)))
+    total_result = await db.execute(
+        select(func.count(Bot.id)).where(Bot.user_id == current_user.id)
+    )
     total_bots = total_result.scalar()
 
     # Active bots
     active_result = await db.execute(
-        select(func.count(Bot.id)).where(Bot.status == BotStatus.ACTIVE)
+        select(func.count(Bot.id)).where(
+            Bot.status == BotStatus.ACTIVE,
+            Bot.user_id == current_user.id
+        )
     )
     active_bots = active_result.scalar()
 
@@ -834,11 +906,15 @@ async def get_statistics(
     stopped_bots = total_bots - active_bots
 
     # Total PnL
-    pnl_result = await db.execute(select(func.sum(Bot.pnl)))
+    pnl_result = await db.execute(
+        select(func.sum(Bot.pnl)).where(Bot.user_id == current_user.id)
+    )
     total_pnl = pnl_result.scalar() or 0.0
 
     # Total trades
-    trades_result = await db.execute(select(func.sum(Bot.total_trades)))
+    trades_result = await db.execute(
+        select(func.sum(Bot.total_trades)).where(Bot.user_id == current_user.id)
+    )
     total_trades = trades_result.scalar() or 0
 
     return {
@@ -855,20 +931,32 @@ async def get_bot_orders(
     bot_id: UUID,
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get all orders for a specific bot
+    Get all orders for a specific bot (user ownership check)
     """
-    # Verify bot exists
-    bot_result = await db.execute(select(Bot).where(Bot.id == bot_id))
+    # Multi-user support: verify bot exists and user owns it
+    bot_result = await db.execute(
+        select(Bot).where(
+            Bot.id == bot_id,
+            Bot.user_id == current_user.id
+        )
+    )
     bot = bot_result.scalar_one_or_none()
 
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
 
     # Get orders for this bot
-    query = select(Order).where(Order.bot_id == bot_id).offset(skip).limit(limit).order_by(Order.created_at.desc())
+    query = (
+        select(OrderModel)
+        .where(OrderModel.bot_id == bot_id)
+        .offset(skip)
+        .limit(limit)
+        .order_by(OrderModel.created_at.desc())
+    )
     result = await db.execute(query)
     orders = result.scalars().all()
 

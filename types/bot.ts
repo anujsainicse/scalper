@@ -2,7 +2,7 @@ export type Exchange = 'CoinDCX F' | 'Binance';
 
 export type OrderSide = 'BUY' | 'SELL';
 
-export type BotStatus = 'ACTIVE' | 'STOPPED';
+export type BotStatus = 'ACTIVE' | 'STOPPED' | 'ERROR';
 
 export type LogLevel = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'TELEGRAM';
 
