@@ -69,6 +69,7 @@ Trend-following with momentum indicators:
 #### Dynamic Header
 - **Context-Aware Title**: Shows current bot type
 - **Gradient Themes**: Unique colors for each bot type
+- **Real-Time Price Ticker**: Live cryptocurrency prices (BTC, ETH, SOL, BNB, DOGE)
 - **Collapse Control**: Toggle sidebar from header
 - **User Menu**: Profile, settings, and logout access
 
@@ -104,6 +105,18 @@ Trend-following with momentum indicators:
 - **Bulk Actions**: Emergency stop all bots
 - **Trade Statistics**: Count and performance metrics
 - **Last Activity**: Relative time display
+
+### 💹 Real-Time Market Data
+
+#### Price Ticker (Header)
+- **Live Cryptocurrency Prices**: BTC, ETH, SOL, BNB, DOGE displayed in header
+- **Auto-refresh**: Prices update every 5 seconds automatically
+- **Visual Indicators**: Green for price increase, red for decrease
+- **Smart Formatting**: Appropriate decimal precision per cryptocurrency
+- **Redis Integration**: Fetches data from Bybit spot market via Redis
+- **Responsive Design**: Shows top 3 cryptos on mobile (BTC, ETH, SOL)
+- **Theme Support**: Works seamlessly in light and dark modes
+- **Loading States**: Skeleton animation while fetching data
 
 ### 📊 Activity Monitoring
 

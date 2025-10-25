@@ -263,6 +263,23 @@ class ApiClient {
     return this.request<any>(`/price/ltp?${params.toString()}`);
   }
 
+  async getMultiplePrices(symbols: string[], exchange: string = 'Bybit'): Promise<{
+    success: boolean;
+    exchange: string;
+    prices: Record<string, {
+      price: number | null;
+      timestamp: string | null;
+      redis_key: string;
+      error?: string;
+    }>;
+  }> {
+    const params = new URLSearchParams();
+    symbols.forEach(symbol => params.append('symbols', symbol));
+    params.append('exchange', exchange);
+
+    return this.request<any>(`/price/multiple?${params.toString()}`);
+  }
+
   // Analytics endpoints
   async getAnalyticsPortfolio(dateRange?: string): Promise<any> {
     const params = dateRange ? `?range=${dateRange}` : '';

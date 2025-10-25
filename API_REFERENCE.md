@@ -810,6 +810,211 @@ curl "http://localhost:8000/api/v1/logs/?level=ERROR"
 
 ---
 
+## Price Data API
+
+### Endpoints Summary
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/price/ltp` | Get single ticker LTP data |
+| GET | `/api/v1/price/multiple` | Get multiple crypto prices |
+
+---
+
+### Get Last Traded Price (Single)
+
+Get the last traded price and related data for a single cryptocurrency from Redis.
+
+**Endpoint**
+```
+GET /api/v1/price/ltp
+```
+
+**Query Parameters**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| exchange | string | Yes | - | Exchange name (e.g., 'Bybit', 'Binance') |
+| ticker | string | Yes | - | Trading pair (e.g., 'BTC/USDT') |
+
+**Example Request**
+
+```bash
+curl "http://localhost:8000/api/v1/price/ltp?exchange=Bybit&ticker=BTC/USDT"
+```
+
+**Success Response (200 OK)**
+
+```json
+{
+  "success": true,
+  "redis_key": "bybit_spot:BTC",
+  "exchange": "Bybit",
+  "ticker": "BTC/USDT",
+  "base_symbol": "BTC",
+  "data": {
+    "ltp": "111717.7",
+    "timestamp": "2025-10-25T14:22:55.276503Z",
+    "current_funding_rate": "0.0001"
+  }
+}
+```
+
+**Error Response (400 Bad Request)**
+
+```json
+{
+  "detail": "Unknown exchange: InvalidExchange"
+}
+```
+
+**Error Response (500 Internal Server Error)**
+
+```json
+{
+  "detail": "Redis connection failed"
+}
+```
+
+---
+
+### Get Multiple Cryptocurrency Prices
+
+Get last traded prices for multiple cryptocurrencies in a single request. Optimized for fetching multiple prices simultaneously.
+
+**Endpoint**
+```
+GET /api/v1/price/multiple
+```
+
+**Query Parameters**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| symbols | string[] | Yes | - | Array of crypto symbols (e.g., 'BTC', 'ETH') |
+| exchange | string | No | "Bybit" | Exchange name |
+
+**Example Requests**
+
+```bash
+# Get prices for BTC, ETH, and SOL from Bybit
+curl "http://localhost:8000/api/v1/price/multiple?symbols=BTC&symbols=ETH&symbols=SOL&exchange=Bybit"
+
+# Get prices for all major cryptos (default Bybit)
+curl "http://localhost:8000/api/v1/price/multiple?symbols=BTC&symbols=ETH&symbols=SOL&symbols=BNB&symbols=DOGE"
+```
+
+**Success Response (200 OK)**
+
+```json
+{
+  "success": true,
+  "exchange": "Bybit",
+  "prices": {
+    "BTC": {
+      "price": 111717.7,
+      "timestamp": "2025-10-25T14:22:55.276503Z",
+      "redis_key": "bybit_spot:BTC"
+    },
+    "ETH": {
+      "price": 3946.42,
+      "timestamp": "2025-10-25T14:22:56.721869Z",
+      "redis_key": "bybit_spot:ETH"
+    },
+    "SOL": {
+      "price": 192.74,
+      "timestamp": "2025-10-25T14:22:56.779532Z",
+      "redis_key": "bybit_spot:SOL"
+    },
+    "BNB": {
+      "price": 1113.4,
+      "timestamp": "2025-10-25T14:22:56.581761Z",
+      "redis_key": "bybit_spot:BNB"
+    },
+    "DOGE": {
+      "price": 0.19748,
+      "timestamp": "2025-10-25T14:22:56.838482Z",
+      "redis_key": "bybit_spot:DOGE"
+    }
+  }
+}
+```
+
+**Response (with missing data)**
+
+If Redis doesn't have data for a symbol, it will still be included with `price: null`:
+
+```json
+{
+  "success": true,
+  "exchange": "Bybit",
+  "prices": {
+    "BTC": {
+      "price": 111717.7,
+      "timestamp": "2025-10-25T14:22:55.276503Z",
+      "redis_key": "bybit_spot:BTC"
+    },
+    "INVALID": {
+      "price": null,
+      "timestamp": null,
+      "redis_key": "bybit_spot:INVALID",
+      "error": "No data available"
+    }
+  }
+}
+```
+
+**Error Response (400 Bad Request)**
+
+```json
+{
+  "detail": "Unknown exchange: InvalidExchange"
+}
+```
+
+**Error Response (500 Internal Server Error)**
+
+```json
+{
+  "detail": "Redis connection timeout"
+}
+```
+
+**Supported Exchanges**
+
+| Exchange | Redis Prefix | Data Type |
+|----------|--------------|-----------|
+| Bybit | `bybit_spot` | Spot market |
+| Binance | `binance_spot` | Spot market |
+| CoinDCX F | `coindcx_futures` | Futures |
+| Delta | `delta_futures` | Futures |
+
+**Redis Key Format**
+
+Prices are stored in Redis with the following key format:
+```
+{redis_prefix}:{base_symbol}
+```
+
+Examples:
+- `bybit_spot:BTC`
+- `bybit_spot:ETH`
+- `binance_spot:BTC`
+- `coindcx_futures:ETH`
+
+**Performance Notes**
+
+- **Response Time**: Typically 20-30ms for 5 symbols
+- **Cache**: No caching on backend (Redis is already fast)
+- **Concurrent**: Safe for high-frequency requests
+- **Rate Limit**: None currently (consider adding for production)
+
+**Usage in Frontend**
+
+The `/price/multiple` endpoint is used by the PriceTicker component to display real-time cryptocurrency prices in the dashboard header. Prices auto-refresh every 5 seconds.
+
+---
+
 ## Timestamps
 
 All timestamps are in ISO 8601 format with timezone:

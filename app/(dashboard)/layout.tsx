@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { UserMenu } from '@/components/UserMenu'
+import { PriceTicker } from '@/components/PriceTicker'
 import { cn } from '@/lib/utils'
 
 // Bot type configurations
@@ -84,6 +85,12 @@ export default function DashboardLayout({
                 {currentBotConfig.title}
               </h1>
             </div>
+
+            {/* Price Ticker - Center */}
+            <div className="flex-1 flex justify-center">
+              <PriceTicker />
+            </div>
+
             <UserMenu />
           </div>
         </header>
