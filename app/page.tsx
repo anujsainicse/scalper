@@ -10,6 +10,8 @@ import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TelegramConnect } from '@/components/TelegramConnect';
 import { DataLoader } from '@/components/DataLoader';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { UserMenu } from '@/components/UserMenu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Package, Radio, BarChart3 } from 'lucide-react';
@@ -20,7 +22,8 @@ export default function Home() {
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>('logs');
 
   return (
-    <DataLoader>
+    <ProtectedRoute>
+      <DataLoader>
       <div className="min-h-screen p-4 md:p-6">
       {/* Header */}
       <header className="mb-8 bg-card border border-border rounded-2xl p-6 shadow-2xl">
@@ -34,6 +37,7 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <UserMenu />
             <TelegramConnect />
             <ThemeToggle />
           </div>
@@ -123,5 +127,6 @@ export default function Home() {
       </div>
     </div>
     </DataLoader>
+    </ProtectedRoute>
   );
 }
